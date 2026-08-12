@@ -1,37 +1,44 @@
 {
   "symbol": "CSU.TO",
   "source": "Delayed/historical public chart feed",
-  "updatedAt": "2026-08-12T18:36:35.171Z",
+  "updatedAt": "2026-08-12T19:29:53.441Z",
   "asOf": "2026-08-12",
   "indicators": {
-    "price": 3026.580078125,
-    "sma20": 2946.314013671875,
-    "sma50": 2883.2792138671875,
-    "sma100": 2707.036005859375,
-    "sma200": 2855.998603515625,
-    "rsi14": 52.290891544668476,
-    "macd": 110.56246203276305,
-    "macdSignal": 89.70520788867921,
-    "support20": 2534.219970703125,
+    "price": 3079.60009765625,
+    "sma20": 2535.733020019531,
+    "sma50": 2719.04681640625,
+    "sma100": 2624.919807128906,
+    "sma200": 2814.9405041503906,
+    "rsi14": 52.8654529112704,
+    "macd": 156.83260952914225,
+    "macdSignal": 47.1339971480062,
+    "support20": 0,
     "resistance20": 3342.7099609375
   },
   "analysis": {
-    "trend": "Strong Uptrend",
-    "trendScore": 5,
-    "trendConfidence": "90%",
-    "entryQuality": "Balanced",
-    "buyDecision": "BUY",
-    "sellDecision": "HOLD",
+    "trend": "Mixed / Sideways",
+    "trendScore": 1,
+    "trendConfidence": "58%",
+    "entryQuality": "Extended",
+    "buyDecision": "DO NOT BUY",
+    "sellDecision": "HOLD / REVIEW",
     "reasons": [
-      "Trend: Strong Uptrend (+5/5)",
-      "Entry quality: Balanced",
-      "Momentum and SMA20 distance are balanced",
-      "Buy decision: BUY",
-      "Sell decision: HOLD",
-      "RSI14 is 52.3",
+      "Trend: Mixed / Sideways (+1/5)",
+      "Entry quality: Extended",
+      "Price is more than ~8% above SMA20",
+      "Buy decision: DO NOT BUY",
+      "Sell decision: HOLD / REVIEW",
+      "RSI14 is 52.9",
       "MACD is above signal"
     ],
     "disclaimer": "Research recommendation based on delayed/historical technical data. It is not a guarantee of return and does not execute trades."
+  },
+  "paperTrades": [],
+  "paperSummary": {
+    "total": 0,
+    "completed": 0,
+    "winRate20d": null,
+    "avgReturn20d": null
   },
   "candles": [
     {
@@ -3932,19 +3939,19 @@
     },
     {
       "date": "2026-07-21",
-      "open": 2780.489990234375,
-      "high": 2780.489990234375,
-      "low": 2611.840087890625,
-      "close": 2658.52001953125,
-      "volume": 55300
+      "open": 0,
+      "high": 0,
+      "low": 0,
+      "close": 0,
+      "volume": 0
     },
     {
       "date": "2026-07-22",
-      "open": 2648.52001953125,
-      "high": 2650,
-      "low": 2562.6298828125,
-      "close": 2603.1298828125,
-      "volume": 73800
+      "open": 0,
+      "high": 0,
+      "low": 0,
+      "close": 0,
+      "volume": 0
     },
     {
       "date": "2026-07-23",
@@ -3996,11 +4003,11 @@
     },
     {
       "date": "2026-07-31",
-      "open": 2976.68994140625,
-      "high": 3045.35009765625,
-      "low": 2971.1201171875,
-      "close": 3002.989990234375,
-      "volume": 53300
+      "open": 0,
+      "high": 0,
+      "low": 0,
+      "close": 0,
+      "volume": 0
     },
     {
       "date": "2026-08-04",
@@ -4055,8 +4062,8 @@
       "open": 3203.800048828125,
       "high": 3203.81005859375,
       "low": 2949.699951171875,
-      "close": 3026.580078125,
-      "volume": 39531
+      "close": 3079.60009765625,
+      "volume": 44986
     }
   ]
 }
