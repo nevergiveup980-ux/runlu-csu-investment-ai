@@ -1,0 +1,23 @@
+name: Webull Sandbox Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Webull SDK
+        run: pip install -r webull-bot/requirements.txt
+      - name: Verify sandbox connection
+        env:
+          WEBULL_APP_KEY: ${{ secrets.WEBULL_APP_KEY }}
+          WEBULL_APP_SECRET: ${{ secrets.WEBULL_APP_SECRET }}
+        run: python webull-bot/src/sandbox_check.py
