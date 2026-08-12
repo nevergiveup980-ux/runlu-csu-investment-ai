@@ -1,7 +1,7 @@
 {
   "symbol": "CSU.TO",
   "source": "Delayed/historical public chart feed",
-  "updatedAt": "2026-08-12T19:29:53.441Z",
+  "updatedAt": "2026-08-12T19:30:31.626Z",
   "asOf": "2026-08-12",
   "indicators": {
     "price": 3079.60009765625,
@@ -4063,7 +4063,7 @@
       "high": 3203.81005859375,
       "low": 2949.699951171875,
       "close": 3079.60009765625,
-      "volume": 44986
+      "volume": 44995
     }
   ]
 }
