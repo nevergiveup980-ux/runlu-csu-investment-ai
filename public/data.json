@@ -1,17 +1,17 @@
 {
   "symbol": "CSU.TO",
   "source": "Delayed/historical public chart feed",
-  "updatedAt": "2026-08-12T19:30:31.626Z",
+  "updatedAt": "2026-08-12T20:25:26.648Z",
   "asOf": "2026-08-12",
   "indicators": {
-    "price": 3079.60009765625,
-    "sma20": 2535.733020019531,
-    "sma50": 2719.04681640625,
-    "sma100": 2624.919807128906,
-    "sma200": 2814.9405041503906,
-    "rsi14": 52.8654529112704,
-    "macd": 156.83260952914225,
-    "macdSignal": 47.1339971480062,
+    "price": 3075.409912109375,
+    "sma20": 2535.5235107421877,
+    "sma50": 2718.9630126953125,
+    "sma100": 2624.8779052734376,
+    "sma200": 2814.9195532226563,
+    "rsi14": 52.832716523511564,
+    "macd": 156.49834971343716,
+    "macdSignal": 47.06714518486518,
     "support20": 0,
     "resistance20": 3342.7099609375
   },
@@ -28,7 +28,7 @@
       "Price is more than ~8% above SMA20",
       "Buy decision: DO NOT BUY",
       "Sell decision: HOLD / REVIEW",
-      "RSI14 is 52.9",
+      "RSI14 is 52.8",
       "MACD is above signal"
     ],
     "disclaimer": "Research recommendation based on delayed/historical technical data. It is not a guarantee of return and does not execute trades."
@@ -4062,8 +4062,8 @@
       "open": 3203.800048828125,
       "high": 3203.81005859375,
       "low": 2949.699951171875,
-      "close": 3079.60009765625,
-      "volume": 44995
+      "close": 3075.409912109375,
+      "volume": 74373
     }
   ]
 }
