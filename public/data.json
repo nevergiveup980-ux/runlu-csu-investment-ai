@@ -1,17 +1,17 @@
 {
   "symbol": "CSU.TO",
   "source": "Delayed/historical public chart feed",
-  "updatedAt": "2026-08-12T17:53:12.702Z",
+  "updatedAt": "2026-08-12T18:35:50.399Z",
   "asOf": "2026-08-12",
   "indicators": {
-    "price": 3019.10009765625,
-    "sma20": 2945.9400146484377,
-    "sma50": 2883.1296142578126,
-    "sma100": 2706.9612060546874,
-    "sma200": 2855.961203613281,
-    "rsi14": 51.987815316448966,
-    "macd": 109.96576843411594,
-    "macdSignal": 89.58586916894978,
+    "price": 3026.580078125,
+    "sma20": 2946.314013671875,
+    "sma50": 2883.2792138671875,
+    "sma100": 2707.036005859375,
+    "sma200": 2855.998603515625,
+    "rsi14": 52.290891544668476,
+    "macd": 110.56246203276305,
+    "macdSignal": 89.70520788867921,
     "support20": 2534.219970703125,
     "resistance20": 3342.7099609375
   },
@@ -20,15 +20,18 @@
     "trendScore": 5,
     "trendConfidence": "90%",
     "entryQuality": "Balanced",
-    "action": "WATCH FOR ENTRY",
+    "buyDecision": "BUY",
+    "sellDecision": "HOLD",
     "reasons": [
       "Trend: Strong Uptrend (+5/5)",
       "Entry quality: Balanced",
       "Momentum and SMA20 distance are balanced",
-      "RSI14 is 52.0",
+      "Buy decision: BUY",
+      "Sell decision: HOLD",
+      "RSI14 is 52.3",
       "MACD is above signal"
     ],
-    "disclaimer": "Research signal only; not a prediction of return or an automatic trade instruction."
+    "disclaimer": "Research recommendation based on delayed/historical technical data. It is not a guarantee of return and does not execute trades."
   },
   "candles": [
     {
@@ -4052,8 +4055,8 @@
       "open": 3203.800048828125,
       "high": 3203.81005859375,
       "low": 2949.699951171875,
-      "close": 3019.10009765625,
-      "volume": 35064
+      "close": 3026.580078125,
+      "volume": 39515
     }
   ]
 }
