@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 const url='https://query1.finance.yahoo.com/v8/finance/chart/CSU.TO?range=2y&interval=1d&events=div%2Csplits';
-const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 RUNLU-CSU-Research/1.5'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const d=await r.json(),x=d?.chart?.result?.[0],q=x?.indicators?.quote?.[0];if(!x?.timestamp||!q)throw new Error('No CSU data');
+const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 RUNLU-CSU-Research/1.6'}});if(!r.ok)throw new Error(`HTTP ${r.status}`);const d=await r.json(),x=d?.chart?.result?.[0],q=x?.indicators?.quote?.[0];if(!x?.timestamp||!q)throw new Error('No CSU data');
 const candles=x.timestamp.map((t,i)=>({date:new Date(t*1000).toISOString().slice(0,10),open:+q.open[i],high:+q.high[i],low:+q.low[i],close:+q.close[i],volume:+(q.volume[i]||0)})).filter(c=>[c.open,c.high,c.low,c.close].every(Number.isFinite));
 const avg=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:null, closes=candles.map(c=>c.close), sm=n=>closes.length>=n?avg(closes.slice(-n)):null;
 function ema(v,p){if(v.length<p)return[];let z=avg(v.slice(0,p)),o=[z],k=2/(p+1);for(let i=p;i<v.length;i++){z=v[i]*k+z*(1-k);o.push(z)}return o}
@@ -15,13 +15,15 @@ if(supportDistance<=0.035){entryQuality='Favorable Area';entryReasons.push('Pric
 if(ma50Distance!=null&&ma50Distance<-.05){entryQuality='Weak / Risky';entryReasons.push('Price is more than ~5% below SMA50')}
 let buyDecision='DO NOT BUY',sellDecision='HOLD';
 if((trend==='Strong Uptrend'||trend==='Uptrend')&&(entryQuality==='Favorable Area'||entryQuality==='Balanced')&&ind.rsi14<65)buyDecision='BUY';
-if(entryQuality==='Extended'||trend==='Mixed / Sideways')buyDecision='DO NOT BUY';
-if(trend==='Downtrend'||trend==='Strong Downtrend')buyDecision='DO NOT BUY';
-const breakdown=(ind.sma50!=null&&price<ind.sma50)&&(ind.macd!=null&&ind.macdSignal!=null&&ind.macd<ind.macdSignal);
-const severeBreak=(ind.sma200!=null&&price<ind.sma200)&&(trend==='Strong Downtrend');
-if(severeBreak||breakdown)sellDecision='SELL';
-else if(trend==='Strong Uptrend'||trend==='Uptrend')sellDecision='HOLD';
-else if(trend==='Mixed / Sideways')sellDecision='HOLD / REVIEW';
-else sellDecision='REVIEW / POSSIBLE SELL';
+if(entryQuality==='Extended'||trend==='Mixed / Sideways'||trend==='Downtrend'||trend==='Strong Downtrend')buyDecision='DO NOT BUY';
+const breakdown=(ind.sma50!=null&&price<ind.sma50)&&(ind.macd!=null&&ind.macdSignal!=null&&ind.macd<ind.macdSignal),severeBreak=(ind.sma200!=null&&price<ind.sma200)&&(trend==='Strong Downtrend');
+if(severeBreak||breakdown)sellDecision='SELL';else if(trend==='Strong Uptrend'||trend==='Uptrend')sellDecision='HOLD';else if(trend==='Mixed / Sideways')sellDecision='HOLD / REVIEW';else sellDecision='REVIEW / POSSIBLE SELL';
 const reasons=[`Trend: ${trend} (${trendScore>0?'+':''}${trendScore}/${trendSignals.length})`,`Entry quality: ${entryQuality}`,...entryReasons,`Buy decision: ${buyDecision}`,`Sell decision: ${sellDecision}`];if(ind.rsi14!=null)reasons.push(`RSI14 is ${ind.rsi14.toFixed(1)}`);if(ind.macd!=null&&ind.macdSignal!=null)reasons.push(ind.macd>ind.macdSignal?'MACD is above signal':'MACD is below signal');
-fs.mkdirSync('public',{recursive:true});fs.writeFileSync('public/data.json',JSON.stringify({symbol:'CSU.TO',source:'Delayed/historical public chart feed',updatedAt:new Date().toISOString(),asOf:candles.at(-1)?.date,indicators:ind,analysis:{trend,trendScore,trendConfidence,entryQuality,buyDecision,sellDecision,reasons,disclaimer:'Research recommendation based on delayed/historical technical data. It is not a guarantee of return and does not execute trades.'},candles},null,2));
+let old={};try{old=JSON.parse(fs.readFileSync('public/data.json','utf8'))}catch{}let paperTrades=Array.isArray(old.paperTrades)?old.paperTrades:[];
+const pct=(a,b)=>a&&b?((b/a)-1)*100:null,asOf=candles.at(-1)?.date;
+paperTrades=paperTrades.map(t=>{const idx=candles.findIndex(c=>c.date===t.entryDate);if(idx<0)return t;const result={...t};for(const n of [5,10,20]){const c=candles[idx+n];if(c){result[`price${n}d`]=c.close;result[`return${n}d`]=pct(t.entryPrice,c.close);result[`date${n}d`]=c.date}}return result});
+const active=paperTrades.some(t=>t.return20d==null);
+if(buyDecision==='BUY'&&!active){paperTrades.push({id:`BUY-${asOf}-${Date.now()}`,signal:'BUY',entryDate:asOf,entryPrice:price,trend,entryQuality,trendConfidence,return5d:null,return10d:null,return20d:null,createdAt:new Date().toISOString()})}
+paperTrades=paperTrades.slice(-20);
+const completed=paperTrades.filter(t=>t.return20d!=null),wins=completed.filter(t=>t.return20d>0).length,paperSummary={total:paperTrades.length,completed:completed.length,winRate20d:completed.length?wins/completed.length*100:null,avgReturn20d:completed.length?avg(completed.map(t=>t.return20d)):null};
+fs.mkdirSync('public',{recursive:true});fs.writeFileSync('public/data.json',JSON.stringify({symbol:'CSU.TO',source:'Delayed/historical public chart feed',updatedAt:new Date().toISOString(),asOf,indicators:ind,analysis:{trend,trendScore,trendConfidence,entryQuality,buyDecision,sellDecision,reasons,disclaimer:'Research recommendation based on delayed/historical technical data. It is not a guarantee of return and does not execute trades.'},paperTrades,paperSummary,candles},null,2));
