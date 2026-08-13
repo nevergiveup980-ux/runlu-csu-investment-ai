@@ -29,6 +29,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: main
+      - name: Apply V1.7 chart UI patch
+        run: node scripts/patch-ui-v17.mjs
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload static dashboard
