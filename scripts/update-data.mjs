@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 
 const DAILY_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/CSU.TO?range=2y&interval=1d&events=div%2Csplits';
-const INTRADAY_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/CSU.TO?range=1d&interval=5m&includePrePost=false&events=div%2Csplits';
+const QUOTE_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/CSU.TO?range=1d&interval=5m&includePrePost=false&events=div%2Csplits';
+const HOURLY_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/CSU.TO?range=1y&interval=1h&includePrePost=false&events=div%2Csplits';
 const HEADERS = { 'User-Agent': 'Mozilla/5.0 RUNLU-CSU-Research/1.7' };
 
 async function fetchChart(url, label) {
@@ -13,36 +14,79 @@ async function fetchChart(url, label) {
   return x;
 }
 
-const daily = await fetchChart(DAILY_URL, 'daily');
-const q = daily?.indicators?.quote?.[0];
-if (!q) throw new Error('No CSU daily quote data');
-
-const candles = daily.timestamp.map((t, i) => {
-  const open = q.open?.[i], high = q.high?.[i], low = q.low?.[i], close = q.close?.[i];
-  if (![open, high, low, close].every(Number.isFinite)) return null;
-  return {
-    date: new Date(t * 1000).toISOString().slice(0, 10),
-    open, high, low, close,
-    volume: Number.isFinite(q.volume?.[i]) ? q.volume[i] : 0,
-  };
-}).filter(Boolean);
-if (candles.length < 20) throw new Error('Insufficient CSU daily candles');
-
-let intraday = null;
-try {
-  const ix = await fetchChart(INTRADAY_URL, 'intraday');
-  const iq = ix?.indicators?.quote?.[0];
-  const points = ix.timestamp.map((t, i) => {
-    const close = iq?.close?.[i];
-    return Number.isFinite(close) ? { timestamp: t, close } : null;
+function parseOhlc(chart) {
+  const q = chart?.indicators?.quote?.[0];
+  if (!q) return [];
+  return chart.timestamp.map((t, i) => {
+    const open = q.open?.[i], high = q.high?.[i], low = q.low?.[i], close = q.close?.[i];
+    if (![open, high, low, close].every(Number.isFinite)) return null;
+    return {
+      timestamp: t,
+      time: new Date(t * 1000).toISOString(),
+      open, high, low, close,
+      volume: Number.isFinite(q.volume?.[i]) ? q.volume[i] : 0,
+    };
   }).filter(Boolean);
-  intraday = points.at(-1) || null;
+}
+
+const torontoDateFmt = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Toronto',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+});
+function torontoDate(timestamp) {
+  const parts = Object.fromEntries(torontoDateFmt.formatToParts(new Date(timestamp * 1000))
+    .filter(p => p.type !== 'literal').map(p => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function aggregate2h(rows) {
+  const out = [];
+  let i = 0;
+  while (i < rows.length) {
+    const day = torontoDate(rows[i].timestamp);
+    const dayRows = [];
+    while (i < rows.length && torontoDate(rows[i].timestamp) === day) dayRows.push(rows[i++]);
+    for (let j = 0; j < dayRows.length; j += 2) {
+      const group = dayRows.slice(j, j + 2);
+      out.push({
+        timestamp: group[0].timestamp,
+        time: group[0].time,
+        open: group[0].open,
+        high: Math.max(...group.map(r => r.high)),
+        low: Math.min(...group.map(r => r.low)),
+        close: group.at(-1).close,
+        volume: group.reduce((s, r) => s + (r.volume || 0), 0),
+      });
+    }
+  }
+  return out;
+}
+
+const daily = await fetchChart(DAILY_URL, 'daily');
+const dailyRows = parseOhlc(daily).map(r => ({ ...r, date: torontoDate(r.timestamp) }));
+if (dailyRows.length < 20) throw new Error('Insufficient CSU daily candles');
+
+let quotePoint = null;
+try {
+  const ix = await fetchChart(QUOTE_URL, 'intraday quote');
+  const points = parseOhlc(ix);
+  quotePoint = points.at(-1) || null;
 } catch (error) {
-  console.warn(`Intraday feed unavailable; using daily fallback: ${error.message}`);
+  console.warn(`Intraday quote unavailable; using daily fallback: ${error.message}`);
+}
+
+let hourlyCandles = [];
+let twoHourCandles = [];
+try {
+  const hx = await fetchChart(HOURLY_URL, 'hourly');
+  hourlyCandles = parseOhlc(hx);
+  twoHourCandles = aggregate2h(hourlyCandles);
+} catch (error) {
+  console.warn(`Hourly chart feed unavailable: ${error.message}`);
 }
 
 const avg = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
-const closes = candles.map(c => c.close);
+const closes = dailyRows.map(c => c.close);
 const sm = n => closes.length >= n ? avg(closes.slice(-n)) : null;
 function ema(v, p) {
   if (v.length < p) return [];
@@ -65,12 +109,12 @@ function rsi(v, p = 14) {
 
 const e12 = ema(closes, 12), e26 = ema(closes, 26), off = e12.length - e26.length;
 const ms = e26.map((v, i) => e12[i + off] - v), sg = ema(ms, 9);
-const recent = candles.slice(-20);
+const recent = dailyRows.slice(-20);
 const dailyPrice = closes.at(-1);
-const price = intraday?.close ?? dailyPrice;
-const priceAsOf = intraday ? new Date(intraday.timestamp * 1000).toISOString() : new Date(daily.timestamp.at(-1) * 1000).toISOString();
-const quoteMode = intraday ? 'Intraday delayed/indicative' : 'Daily fallback';
-const quoteSource = intraday ? 'Yahoo public 5-minute chart feed' : 'Yahoo public daily chart feed';
+const price = quotePoint?.close ?? dailyPrice;
+const priceAsOf = quotePoint?.time ?? dailyRows.at(-1)?.time;
+const quoteMode = quotePoint ? 'Intraday delayed/indicative' : 'Daily fallback';
+const quoteSource = quotePoint ? 'Yahoo public 5-minute chart feed' : 'Yahoo public daily chart feed';
 
 const ind = {
   price,
@@ -137,13 +181,13 @@ let old = {};
 try { old = JSON.parse(fs.readFileSync('public/data.json', 'utf8')); } catch {}
 let paperTrades = Array.isArray(old.paperTrades) ? old.paperTrades : [];
 const pct = (a, b) => a && b ? ((b / a) - 1) * 100 : null;
-const asOf = candles.at(-1)?.date;
+const asOf = dailyRows.at(-1)?.date;
 paperTrades = paperTrades.map(t => {
-  const idx = candles.findIndex(c => c.date === t.entryDate);
+  const idx = dailyRows.findIndex(c => c.date === t.entryDate);
   if (idx < 0) return t;
   const result = { ...t };
   for (const n of [5, 10, 20]) {
-    const c = candles[idx + n];
+    const c = dailyRows[idx + n];
     if (c) { result[`price${n}d`] = c.close; result[`return${n}d`] = pct(t.entryPrice, c.close); result[`date${n}d`] = c.date; }
   }
   return result;
@@ -181,6 +225,7 @@ fs.writeFileSync('public/data.json', JSON.stringify({
     priceAsOf,
     refreshCadence: 'Every 2 hours on weekdays',
     staleAfterMinutes: 190,
+    hourlyChartAvailable: hourlyCandles.length > 0,
   },
   indicators: ind,
   analysis: {
@@ -189,7 +234,9 @@ fs.writeFileSync('public/data.json', JSON.stringify({
   },
   paperTrades,
   paperSummary,
-  candles,
+  candles: dailyRows,
+  hourlyCandles,
+  twoHourCandles,
 }, null, 2));
 
-console.log(`CSU V1.7 refresh complete: price=${price} mode=${quoteMode} priceAsOf=${priceAsOf}`);
+console.log(`CSU V1.7 refresh complete: price=${price} mode=${quoteMode} hourly=${hourlyCandles.length} twoHour=${twoHourCandles.length} priceAsOf=${priceAsOf}`);
