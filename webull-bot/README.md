@@ -1,46 +1,103 @@
-# RUNLU Webull Bot V1.0
+# RUNLU Webull Bot V2 — Trading Readiness
 
-A sandbox-first Webull OpenAPI integration for US stock research and account monitoring.
+A sandbox-first Webull OpenAPI integration that prepares RUNLU Investment AI for a future user-confirmed US-stock execution workflow.
 
-## Safety mode
+## What changed in V2
 
-V1.0 is **SANDBOX / READ-ONLY by default**. It is designed to verify authentication, account access, balances and positions before any order workflow is enabled.
+V2 adds a real order-execution **scaffold**, but it remains hard-locked to Webull Sandbox. It can now:
 
-No credentials belong in this repository. Use environment variables or GitHub Actions Secrets only.
+- connect to the Webull Sandbox account;
+- build a US equity LIMIT order using Webull's official `order_v3.place_order` SDK method;
+- validate every order through a separate risk guard before any broker call;
+- preview an order without touching Webull;
+- submit a sandbox order only after two independent arming steps;
+- run automated guard tests in GitHub Actions.
 
-## Required secrets
+## Safety architecture
+
+V2 deliberately rejects:
+
+- production/live endpoints;
+- symbols not listed in `RUNLU_ALLOWED_SYMBOLS`;
+- short selling;
+- market orders;
+- extended-hours orders;
+- non-US markets;
+- non-equity instruments;
+- quantities or notionals above configured limits.
+
+A command-line flag by itself is not sufficient to submit an order. Sandbox execution also requires `RUNLU_SANDBOX_TRADING_ARMED=YES`.
+
+**There is no production host path in V2. Real-money execution is not enabled.**
+
+## Required secrets for account connection
 
 - `WEBULL_APP_KEY`
 - `WEBULL_APP_SECRET`
 
-Optional for later phases:
+For sandbox order submission:
+
 - `WEBULL_ACCOUNT_ID`
-- `WEBULL_ACCESS_TOKEN`
+- Webull access-token configuration if required by the account / 2FA setup
 
-## Environment
+Never commit credentials to this repository. Store them in environment variables, Cloudflare secrets, Supabase Vault where appropriate, or GitHub Actions Secrets.
 
-Sandbox host: `api.sandbox.webull.com`
-Production host: `api.webull.com`
+## Risk-control environment variables
 
-V1.0 hard-locks the client to sandbox unless the code is deliberately changed in a later reviewed version.
+- `RUNLU_ALLOWED_SYMBOLS` — comma-separated explicit allowlist, for example `AAPL,MSFT`
+- `RUNLU_MAX_ORDER_QTY` — maximum shares per order; default `1`
+- `RUNLU_MAX_ORDER_NOTIONAL` — maximum estimated order value; default `1000`
+- `RUNLU_SANDBOX_TRADING_ARMED` — must equal exactly `YES` for an actual sandbox submission
 
-## First test
+An empty symbol allowlist blocks every order.
+
+## Connection smoke test
 
 ```bash
 pip install -r webull-bot/requirements.txt
 python webull-bot/src/sandbox_check.py
 ```
 
-Expected result: a sanitized account list / connection status. The script does not place orders.
+## Safe order preview
 
-## Planned phases
+This performs validation only and makes **no broker call**:
 
-1. Sandbox connection + account list
-2. Balance + positions read-only dashboard
-3. Market-data adapter
-4. BUY / HOLD / SELL research layer
-5. Sandbox order preview
-6. Paper execution log
-7. Optional user-confirmed live execution layer
+```bash
+export RUNLU_ALLOWED_SYMBOLS=AAPL
+export RUNLU_MAX_ORDER_QTY=1
+export RUNLU_MAX_ORDER_NOTIONAL=1000
+python webull-bot/src/sandbox_order.py \
+  --symbol AAPL --side BUY --quantity 1 --limit-price 180
+```
 
-Real-money autonomous trading is intentionally outside V1.0.
+## Intentional sandbox submission
+
+Only after the preview is correct and Webull Sandbox credentials are configured:
+
+```bash
+export RUNLU_SANDBOX_TRADING_ARMED=YES
+python webull-bot/src/sandbox_order.py \
+  --symbol AAPL --side BUY --quantity 1 --limit-price 180 \
+  --execute-sandbox
+```
+
+The runner always uses `api.sandbox.webull.com`.
+
+## Planned path toward future execution
+
+1. Sandbox connection and account discovery — built
+2. Independent order risk guard — built
+3. Dry-run / order preview — built
+4. Guarded sandbox order placement — built
+5. Balance + positions pre-trade checks
+6. Order-detail / fill-status reconciliation
+7. Supabase execution journal and audit trail
+8. Strategy-to-order intent bridge
+9. User approval token / confirmation gate
+10. Only after Webull eligibility and a separate security review: design a production adapter
+
+The target architecture is:
+
+`market data -> AI/strategy -> order intent -> risk guard -> user approval -> broker adapter -> order status -> audit log`
+
+This keeps analysis, approval, execution and recordkeeping as separate layers so future capabilities can be added without giving the research model unrestricted brokerage access.
