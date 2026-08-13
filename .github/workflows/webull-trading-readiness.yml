@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run Webull bot unit tests
+      - name: Run trading readiness unit tests
         run: python -m unittest discover -s webull-bot/tests -p 'test_*.py' -v
 
   dry-preview:
