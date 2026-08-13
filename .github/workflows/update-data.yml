@@ -8,6 +8,7 @@ on:
     paths:
       - 'scripts/update-data.mjs'
       - 'public/index.html'
+      - '.github/workflows/update-data.yml'
 permissions:
   contents: write
 concurrency:
@@ -37,6 +38,13 @@ jobs:
             if git push; then
               echo "Refresh data pushed successfully."
               exit 0
+            fi
+            echo "Remote changed; fetching and rebasing before retry."
+            git fetch origin main
+            if ! git rebase origin/main; then
+              echo "Rebase conflict; aborting refresh push safely."
+              git rebase --abort || true
+              exit 1
             fi
             sleep $((attempt * 8))
           done
