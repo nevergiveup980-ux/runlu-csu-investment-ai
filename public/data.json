@@ -1,17 +1,26 @@
 {
   "symbol": "CSU.TO",
-  "source": "Delayed/historical public chart feed",
-  "updatedAt": "2026-08-13T09:50:35.218Z",
-  "asOf": "2026-08-12",
+  "version": "1.7",
+  "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
+  "updatedAt": "2026-08-13T17:07:17.247Z",
+  "asOf": "2026-08-13",
+  "dataStatus": {
+    "quoteMode": "Intraday delayed/indicative",
+    "quoteSource": "Yahoo public 5-minute chart feed",
+    "priceAsOf": "2026-08-13T17:02:04.000Z",
+    "refreshCadence": "Every 2 hours on weekdays",
+    "staleAfterMinutes": 190
+  },
   "indicators": {
-    "price": 3075.409912109375,
-    "sma20": 2948.755505371094,
-    "sma50": 2884.255810546875,
-    "sma100": 2707.524304199219,
-    "sma200": 2856.2427526855467,
-    "rsi14": 54.35965968554206,
-    "macd": 114.45771944462194,
-    "macdSignal": 90.48425937105098,
+    "price": 3102.31005859375,
+    "dailyClose": 3102.31005859375,
+    "sma20": 2970.282507324219,
+    "sma50": 2888.6012109375,
+    "sma100": 2713.555205078125,
+    "sma200": 2852.533203125,
+    "rsi14": 55.406337446492515,
+    "macd": 106.52621602160434,
+    "macdSignal": 93.69265070116167,
     "support20": 2534.219970703125,
     "resistance20": 3342.7099609375
   },
@@ -26,12 +35,13 @@
       "Trend: Strong Uptrend (+5/5)",
       "Entry quality: Neutral",
       "Price is not especially close to support or unusually extended",
+      "Latest price lane: Intraday delayed/indicative",
       "Buy decision: DO NOT BUY",
       "Sell decision: HOLD",
-      "RSI14 is 54.4",
+      "RSI14 is 55.4",
       "MACD is above signal"
     ],
-    "disclaimer": "Research recommendation based on delayed/historical technical data. It is not a guarantee of return and does not execute trades."
+    "disclaimer": "Research recommendation based on delayed/indicative public technical data. It is not a guarantee of return and does not execute trades."
   },
   "paperTrades": [],
   "paperSummary": {
@@ -41,14 +51,6 @@
     "avgReturn20d": null
   },
   "candles": [
-    {
-      "date": "2024-08-12",
-      "open": 4124.39013671875,
-      "high": 4124.39013671875,
-      "low": 3959.5400390625,
-      "close": 3959.5400390625,
-      "volume": 30600
-    },
     {
       "date": "2024-08-13",
       "open": 3974.39990234375,
@@ -4064,6 +4066,14 @@
       "low": 2949.699951171875,
       "close": 3075.409912109375,
       "volume": 80000
+    },
+    {
+      "date": "2026-08-13",
+      "open": 3076.969970703125,
+      "high": 3120,
+      "low": 3057.47998046875,
+      "close": 3102.31005859375,
+      "volume": 12161
     }
   ]
 }
