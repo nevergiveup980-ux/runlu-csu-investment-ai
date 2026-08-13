@@ -6,44 +6,9 @@
 
 Use `POSITION` for long-term core holdings and `INTRADAY` only when explicitly selected for a specific trade lot.
 
-## Buy discipline
-
-A BUY is never created from a single indicator. The buy gate first classifies the setup as `BUY CANDIDATE`, `WATCH`, or `BLOCK`.
-
-The gate can consider:
-- price vs SMA20
-- SMA20 vs SMA50
-- RSI14
-- MACD vs signal
-- distance from 20-period support
-- room to recent resistance
-- relative volume
-
-Anti-chase protection is a hard gate. A setup is blocked when price is excessively extended above SMA20 for the selected trading mode.
-
-Default maximum SMA20 premiums:
-- INTRADAY: 5%
-- SWING: 6%
-- POSITION: 4%
-
-Default confirmation thresholds:
-- INTRADAY: 4 points
-- SWING: 4 points
-- POSITION: 5 points
-
-POSITION mode is intentionally more selective. `SWING` remains the default.
-
-## Position sizing
-
-A qualifying setup still does not determine order size by itself. The sizing layer must respect both:
-- a maximum percentage of currently available cash allocated to the new trade; and
-- a maximum share quantity.
-
-The V2 helper defaults to conservative preview behavior and may return quantity `0` when the cash cap cannot support even one share. Sizing output is an order plan only; it does not place an order.
-
 ## Trade-lot discipline
 
-Every completed purchase is stored as its own trade lot with:
+Every purchase is stored as its own trade lot with:
 - symbol
 - quantity
 - entry price
@@ -53,6 +18,12 @@ Every completed purchase is stored as its own trade lot with:
 - notes / entry thesis
 
 The bot should not erase lot identity by relying only on an average account cost.
+
+## Buy discipline
+
+A BUY may advance only after strategy confirmation, anti-chase checks, conservative position sizing, and account preflight.
+
+Account preflight must confirm sufficient buying power for the estimated order notional before execution can proceed.
 
 ## Normal sell discipline
 
@@ -67,6 +38,8 @@ Default minimum-profit floors:
 - POSITION: 3.0%
 
 These are defaults, not guarantees. Fees/slippage buffers can raise the floor.
+
+Before a SELL may advance, account preflight must also confirm that the requested quantity is actually held.
 
 ## Technical sell inputs
 
@@ -85,17 +58,34 @@ Thresholds:
 
 A profitable position with a strong trend should remain `HOLD / TRAIL` rather than being sold only because it is above cost.
 
+## Order lifecycle and fill reconciliation
+
+An order is not treated as completed merely because it was submitted. The bot must reconcile broker status until the order reaches a terminal state.
+
+Tracked changes include:
+- order status;
+- filled quantity;
+- partial versus full fill;
+- average fill price;
+- cancellation/rejection/expiry.
+
+A BUY TradeLot should be created or updated from actual fill data, not from the requested limit price alone.
+
+## Supabase audit trail
+
+Important lifecycle events should be written to the server-side Supabase trade journal, including strategy decisions, preflight results, order previews, submissions, fill changes, TradeLot creation, sell decisions, and closed trades.
+
+The Supabase service-role key must remain server-side and must never be exposed in browser code or committed to GitHub.
+
+## News and earnings layer
+
+A dedicated news + earnings intelligence layer is planned. It should inform BUY/SELL and major-risk-event decisions, but news alone should not bypass execution risk controls.
+
 ## Risk override
 
 The no-loss preference is NOT an unlimited-loss rule.
 
 A major risk event may override the normal profit floor and move the lot to `RISK EXIT / REVIEW`. Examples include a severe fundamental break, fraud/accounting event, delisting/solvency risk, or another exceptional event approved by the risk layer.
-
-## End-to-end lifecycle
-
-`market data -> buy gate -> sizing plan -> order intent -> risk guard -> user approval -> sandbox broker adapter -> fill reconciliation -> TradeLot -> monitoring -> sell gate -> order intent`
-
-The buy gate, sizing layer, sell gate, and broker adapter remain separate so that strategy logic cannot bypass execution controls.
 
 ## Execution policy
 
