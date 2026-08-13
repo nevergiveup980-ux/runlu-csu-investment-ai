@@ -10,13 +10,17 @@ V2 adds a real order-execution scaffold, but it remains hard-locked to Webull Sa
 - evaluate a mode-aware BUY gate before any order intent exists;
 - reject price-chasing setups that are excessively extended above SMA20;
 - create a conservative position-sizing plan from available cash and quantity caps;
+- preflight available buying power before BUY orders;
+- preflight current held quantity before SELL orders;
 - store each completed purchase as an independent TradeLot;
 - evaluate a protected SELL gate with minimum-profit floors and technical confirmation;
 - build a US equity LIMIT order using Webull's official `order_v3.place_order` SDK method;
 - validate every order through a separate risk guard before any broker call;
 - preview an order without touching Webull;
 - submit a sandbox order only after two independent arming steps;
-- run automated buy/sell/guard tests in GitHub Actions.
+- normalize order/fill responses and detect fill-status transitions;
+- write structured trade lifecycle events to a Supabase journal through a server-side adapter;
+- run automated buy/sell/preflight/reconciliation/guard tests in GitHub Actions.
 
 ## Default trading discipline
 
@@ -37,9 +41,15 @@ A hard anti-chase rule blocks entries that are too far above SMA20 for the selec
 
 Even a `BUY CANDIDATE` does not place an order. It passes to the sizing and order-intent layers first.
 
-## Position sizing
+## Position sizing and account preflight
 
 The sizing helper respects both available cash and configured quantity caps. It may return quantity `0` if the configured cash allocation cannot support one share.
+
+Before an order may advance:
+- BUY must pass an account buying-power check against estimated order notional;
+- SELL must pass a held-position quantity check for the requested symbol and quantity.
+
+These checks are intentionally separate from strategy scoring and the broker order call.
 
 ## TradeLot + Sell Gate
 
@@ -52,6 +62,32 @@ A normal sale requires both:
 A separate major-risk-event override prevents the no-loss preference from becoming an unlimited-loss rule.
 
 See `TRADING_POLICY.md` for the full policy.
+
+## Fill reconciliation
+
+`order_reconcile.py` normalizes broker order responses into a stable internal record and detects changes in status, filled quantity and average fill price. This is the bridge for turning an accepted order into an actual filled TradeLot rather than assuming an order was filled merely because it was submitted.
+
+## Supabase trade journal
+
+`supabase_journal.py` writes server-side lifecycle events such as:
+- strategy decision;
+- preflight result;
+- order preview;
+- submitted order;
+- order-status change;
+- partial fill / full fill;
+- TradeLot creation;
+- sell-gate decision;
+- closed trade.
+
+The SQL scaffold is in `supabase_trade_journal.sql`.
+
+Required server-side variables for writes:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- optional `RUNLU_TRADE_JOURNAL_TABLE` (default `trade_journal`)
+
+The service-role key must never be exposed to browser code or committed to GitHub.
 
 ## Safety architecture
 
@@ -132,15 +168,16 @@ The runner always uses `api.sandbox.webull.com`.
 5. Independent order risk guard — built
 6. Dry-run / order preview — built
 7. Guarded sandbox order placement — built
-8. Balance + positions pre-trade checks
-9. Order-detail / fill-status reconciliation
-10. Supabase execution journal and audit trail
+8. Balance + positions pre-trade checks — scaffold built
+9. Order-detail / fill-status reconciliation — scaffold built
+10. Supabase execution journal and audit trail — scaffold built
 11. Strategy-to-order intent bridge
 12. User approval token / confirmation gate
-13. Only after Webull eligibility and a separate security review: design a production adapter
+13. News + earnings intelligence layer
+14. Only after Webull eligibility and a separate security review: design a production adapter
 
 Target architecture:
 
-`market data -> buy gate -> sizing -> order intent -> risk guard -> user approval -> broker adapter -> fill reconciliation -> TradeLot -> monitoring -> sell gate -> order intent`
+`market data + news/earnings -> buy gate -> sizing -> account preflight -> order intent -> risk guard -> user approval -> broker adapter -> fill reconciliation -> Supabase journal -> TradeLot -> monitoring -> sell gate -> order intent`
 
 This keeps analysis, approval, execution and recordkeeping as separate layers so future capabilities can be added without giving the research model unrestricted brokerage access.
