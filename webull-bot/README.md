@@ -4,14 +4,54 @@ A sandbox-first Webull OpenAPI integration that prepares RUNLU Investment AI for
 
 ## What changed in V2
 
-V2 adds a real order-execution **scaffold**, but it remains hard-locked to Webull Sandbox. It can now:
+V2 adds a real order-execution scaffold, but it remains hard-locked to Webull Sandbox. It can now:
 
 - connect to the Webull Sandbox account;
+- evaluate a mode-aware BUY gate before any order intent exists;
+- reject price-chasing setups that are excessively extended above SMA20;
+- create a conservative position-sizing plan from available cash and quantity caps;
+- store each completed purchase as an independent TradeLot;
+- evaluate a protected SELL gate with minimum-profit floors and technical confirmation;
 - build a US equity LIMIT order using Webull's official `order_v3.place_order` SDK method;
 - validate every order through a separate risk guard before any broker call;
 - preview an order without touching Webull;
 - submit a sandbox order only after two independent arming steps;
-- run automated guard tests in GitHub Actions.
+- run automated buy/sell/guard tests in GitHub Actions.
+
+## Default trading discipline
+
+Default mode: `SWING`.
+
+Other modes are available per TradeLot:
+- `POSITION` — more selective entry and exit thresholds for longer-term holdings;
+- `SWING` — default mode for multi-day / multi-week opportunities;
+- `INTRADAY` — available only when explicitly selected for a trade lot.
+
+The bot does not treat “price is up” as a sell reason by itself and does not treat “price is down” as a buy reason by itself.
+
+## Buy Gate
+
+A setup is classified as `BUY CANDIDATE`, `WATCH`, or `BLOCK` using multiple inputs such as SMA20/SMA50, RSI14, MACD, support, resistance and relative volume.
+
+A hard anti-chase rule blocks entries that are too far above SMA20 for the selected trading mode.
+
+Even a `BUY CANDIDATE` does not place an order. It passes to the sizing and order-intent layers first.
+
+## Position sizing
+
+The sizing helper respects both available cash and configured quantity caps. It may return quantity `0` if the configured cash allocation cannot support one share.
+
+## TradeLot + Sell Gate
+
+Each completed buy becomes its own TradeLot with entry price, quantity, time, fees, trading mode and notes. Normal sells are evaluated against that lot's break-even/protected floor rather than relying only on an account-wide average cost.
+
+A normal sale requires both:
+1. price protection; and
+2. sufficient technical sell confirmation.
+
+A separate major-risk-event override prevents the no-loss preference from becoming an unlimited-loss rule.
+
+See `TRADING_POLICY.md` for the full policy.
 
 ## Safety architecture
 
@@ -60,7 +100,7 @@ python webull-bot/src/sandbox_check.py
 
 ## Safe order preview
 
-This performs validation only and makes **no broker call**:
+This performs validation only and makes no broker call:
 
 ```bash
 export RUNLU_ALLOWED_SYMBOLS=AAPL
@@ -86,18 +126,21 @@ The runner always uses `api.sandbox.webull.com`.
 ## Planned path toward future execution
 
 1. Sandbox connection and account discovery — built
-2. Independent order risk guard — built
-3. Dry-run / order preview — built
-4. Guarded sandbox order placement — built
-5. Balance + positions pre-trade checks
-6. Order-detail / fill-status reconciliation
-7. Supabase execution journal and audit trail
-8. Strategy-to-order intent bridge
-9. User approval token / confirmation gate
-10. Only after Webull eligibility and a separate security review: design a production adapter
+2. Buy Gate + anti-chase discipline — built
+3. Conservative position sizing — built
+4. TradeLot identity + protected Sell Gate — built
+5. Independent order risk guard — built
+6. Dry-run / order preview — built
+7. Guarded sandbox order placement — built
+8. Balance + positions pre-trade checks
+9. Order-detail / fill-status reconciliation
+10. Supabase execution journal and audit trail
+11. Strategy-to-order intent bridge
+12. User approval token / confirmation gate
+13. Only after Webull eligibility and a separate security review: design a production adapter
 
-The target architecture is:
+Target architecture:
 
-`market data -> AI/strategy -> order intent -> risk guard -> user approval -> broker adapter -> order status -> audit log`
+`market data -> buy gate -> sizing -> order intent -> risk guard -> user approval -> broker adapter -> fill reconciliation -> TradeLot -> monitoring -> sell gate -> order intent`
 
 This keeps analysis, approval, execution and recordkeeping as separate layers so future capabilities can be added without giving the research model unrestricted brokerage access.
