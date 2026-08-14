@@ -2,7 +2,7 @@
   "symbol": "CSU.TO",
   "version": "1.7",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-08-14T09:45:29.304Z",
+  "updatedAt": "2026-08-14T12:31:07.796Z",
   "asOf": "2026-08-13",
   "dataStatus": {
     "quoteMode": "Intraday delayed/indicative",
@@ -15,13 +15,13 @@
   "indicators": {
     "price": 3162.969970703125,
     "dailyClose": 3162.969970703125,
-    "sma20": 2972.7420166015627,
-    "sma50": 2897.318212890625,
-    "sma100": 2707.37900390625,
-    "sma200": 2868.2859020996093,
-    "rsi14": 57.11906179134606,
-    "macd": 109.63340246400276,
-    "macdSignal": 91.81743177400219,
+    "sma20": 2973.3155029296877,
+    "sma50": 2889.8144091796876,
+    "sma100": 2714.1618041992188,
+    "sma200": 2852.8365026855467,
+    "rsi14": 57.59907466853975,
+    "macd": 111.3651833693607,
+    "macdSignal": 94.66044417071294,
     "support20": 2534.219970703125,
     "resistance20": 3342.7099609375
   },
@@ -39,7 +39,7 @@
       "Latest price lane: Intraday delayed/indicative",
       "Buy decision: DO NOT BUY",
       "Sell decision: HOLD",
-      "RSI14 is 57.1",
+      "RSI14 is 57.6",
       "MACD is above signal"
     ],
     "disclaimer": "Research recommendation based on delayed/indicative public technical data. It is not a guarantee of return and does not execute trades."
@@ -4913,6 +4913,26 @@
       "date": "2026-07-20"
     },
     {
+      "timestamp": 1784640600,
+      "time": "2026-07-21T13:30:00.000Z",
+      "open": 2780.489990234375,
+      "high": 2780.489990234375,
+      "low": 2611.840087890625,
+      "close": 2658.52001953125,
+      "volume": 55300,
+      "date": "2026-07-21"
+    },
+    {
+      "timestamp": 1784727000,
+      "time": "2026-07-22T13:30:00.000Z",
+      "open": 2648.52001953125,
+      "high": 2650,
+      "low": 2562.6298828125,
+      "close": 2603.1298828125,
+      "volume": 73800,
+      "date": "2026-07-22"
+    },
+    {
       "timestamp": 1784813400,
       "time": "2026-07-23T13:30:00.000Z",
       "open": 2580.110107421875,
@@ -4971,6 +4991,16 @@
       "close": 3020.02001953125,
       "volume": 58500,
       "date": "2026-07-30"
+    },
+    {
+      "timestamp": 1785504600,
+      "time": "2026-07-31T13:30:00.000Z",
+      "open": 2976.68994140625,
+      "high": 3045.35009765625,
+      "low": 2971.1201171875,
+      "close": 3002.989990234375,
+      "volume": 53300,
+      "date": "2026-07-31"
     },
     {
       "timestamp": 1785850200,
