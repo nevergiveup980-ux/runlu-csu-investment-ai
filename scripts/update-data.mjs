@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const DAILY_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/CSU.TO?range=2y&interval=1d&events=div%2Csplits';
 const QUOTE_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/CSU.TO?range=1d&interval=5m&includePrePost=false&events=div%2Csplits';
 const HOURLY_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/CSU.TO?range=1y&interval=1h&includePrePost=false&events=div%2Csplits';
-const HEADERS = { 'User-Agent': 'Mozilla/5.0 RUNLU-CSU-Research/1.7' };
+const HEADERS = { 'User-Agent': 'Mozilla/5.0 RUNLU-CSU-Research/1.8' };
 
 async function fetchChart(url, label) {
   const r = await fetch(url, { headers: HEADERS });
@@ -156,9 +156,9 @@ if (ma50Distance != null && ma50Distance < -0.05) {
   entryQuality = 'Weak / Risky'; entryReasons.push('Price is more than ~5% below SMA50');
 }
 
-let buyDecision = 'DO NOT BUY', sellDecision = 'HOLD';
-if ((trend === 'Strong Uptrend' || trend === 'Uptrend') && (entryQuality === 'Favorable Area' || entryQuality === 'Balanced') && ind.rsi14 < 65) buyDecision = 'BUY';
-if (entryQuality === 'Extended' || trend === 'Mixed / Sideways' || trend === 'Downtrend' || trend === 'Strong Downtrend') buyDecision = 'DO NOT BUY';
+let technicalBuyDecision = 'DO NOT BUY', sellDecision = 'HOLD';
+if ((trend === 'Strong Uptrend' || trend === 'Uptrend') && (entryQuality === 'Favorable Area' || entryQuality === 'Balanced') && ind.rsi14 < 65) technicalBuyDecision = 'BUY';
+if (entryQuality === 'Extended' || trend === 'Mixed / Sideways' || trend === 'Downtrend' || trend === 'Strong Downtrend') technicalBuyDecision = 'DO NOT BUY';
 const breakdown = (ind.sma50 != null && price < ind.sma50) && (ind.macd != null && ind.macdSignal != null && ind.macd < ind.macdSignal);
 const severeBreak = (ind.sma200 != null && price < ind.sma200) && trend === 'Strong Downtrend';
 if (severeBreak || breakdown) sellDecision = 'SELL';
@@ -166,12 +166,61 @@ else if (trend === 'Strong Uptrend' || trend === 'Uptrend') sellDecision = 'HOLD
 else if (trend === 'Mixed / Sideways') sellDecision = 'HOLD / REVIEW';
 else sellDecision = 'REVIEW / POSSIBLE SELL';
 
+let portfolio = {
+  symbol: 'CSU.TO',
+  holdingShares: null,
+  lastSell: null,
+  preferredReentryMax: null,
+  strategy: null,
+  updatedAt: null,
+};
+try {
+  portfolio = { ...portfolio, ...JSON.parse(fs.readFileSync('public/portfolio.json', 'utf8')) };
+} catch (error) {
+  console.warn(`Portfolio context unavailable: ${error.message}`);
+}
+
+const holdingShares = Number.isFinite(Number(portfolio.holdingShares)) ? Number(portfolio.holdingShares) : null;
+const lastSellPrice = Number(portfolio?.lastSell?.price);
+const preferredReentryMax = Number(portfolio?.preferredReentryMax);
+const pctFromLastSell = Number.isFinite(lastSellPrice) && lastSellPrice > 0 ? ((price / lastSellPrice) - 1) * 100 : null;
+const pctToPreferredReentry = Number.isFinite(preferredReentryMax) && preferredReentryMax > 0 ? ((price / preferredReentryMax) - 1) * 100 : null;
+
+let buyDecision = technicalBuyDecision;
+const accountReasons = [];
+if (holdingShares === 0) {
+  accountReasons.push('Account context: currently not holding CSU');
+  if (Number.isFinite(lastSellPrice)) accountReasons.push(`Last confirmed sell: $${lastSellPrice.toFixed(2)}`);
+  if (pctFromLastSell != null) accountReasons.push(`Current price is ${pctFromLastSell.toFixed(2)}% versus the last confirmed sell`);
+
+  if (technicalBuyDecision === 'BUY') {
+    if (Number.isFinite(preferredReentryMax) && price <= preferredReentryMax) {
+      buyDecision = 'BUY';
+      accountReasons.push(`Price is at or below the preferred re-entry ceiling of $${preferredReentryMax.toFixed(2)}`);
+    } else if (entryQuality === 'Favorable Area' && pctFromLastSell != null && pctFromLastSell <= -5) {
+      buyDecision = 'BUY';
+      accountReasons.push('Technical BUY is reinforced by a favorable entry area and at least a 5% discount to the last sell');
+    } else {
+      buyDecision = 'WAIT / BUY ON PULLBACK';
+      accountReasons.push('Technical trend is positive, but the account-aware entry is not yet attractive enough to chase');
+      if (Number.isFinite(preferredReentryMax)) accountReasons.push(`Preferred re-entry remains near or below $${preferredReentryMax.toFixed(2)}`);
+    }
+  } else {
+    buyDecision = 'WAIT';
+    accountReasons.push('Technical conditions do not justify re-entry yet');
+  }
+} else if (holdingShares > 0) {
+  accountReasons.push(`Account context: holding ${holdingShares} CSU share${holdingShares === 1 ? '' : 's'}`);
+}
+
 const reasons = [
   `Trend: ${trend} (${trendScore > 0 ? '+' : ''}${trendScore}/${trendSignals.length})`,
   `Entry quality: ${entryQuality}`,
   ...entryReasons,
+  ...accountReasons,
   `Latest price lane: ${quoteMode}`,
-  `Buy decision: ${buyDecision}`,
+  `Technical buy signal: ${technicalBuyDecision}`,
+  `Account-aware buy decision: ${buyDecision}`,
   `Sell decision: ${sellDecision}`,
 ];
 if (ind.rsi14 != null) reasons.push(`RSI14 is ${ind.rsi14.toFixed(1)}`);
@@ -193,7 +242,7 @@ paperTrades = paperTrades.map(t => {
   return result;
 });
 const active = paperTrades.some(t => t.return20d == null);
-if (buyDecision === 'BUY' && !active) {
+if (technicalBuyDecision === 'BUY' && !active) {
   paperTrades.push({
     id: `BUY-${asOf}-${Date.now()}`, signal: 'BUY', entryDate: asOf, entryPrice: price,
     trend, entryQuality, trendConfidence,
@@ -215,7 +264,7 @@ const updatedAt = new Date().toISOString();
 fs.mkdirSync('public', { recursive: true });
 fs.writeFileSync('public/data.json', JSON.stringify({
   symbol: 'CSU.TO',
-  version: '1.7',
+  version: '1.8',
   source: 'Public daily technical data plus best-effort delayed/indicative intraday chart data',
   updatedAt,
   asOf,
@@ -228,9 +277,22 @@ fs.writeFileSync('public/data.json', JSON.stringify({
     hourlyChartAvailable: hourlyCandles.length > 0,
   },
   indicators: ind,
+  accountContext: {
+    holdingShares,
+    lastSell: portfolio.lastSell,
+    preferredReentryMax: Number.isFinite(preferredReentryMax) ? preferredReentryMax : null,
+    pctFromLastSell,
+    pctToPreferredReentry,
+    strategy: portfolio.strategy,
+    updatedAt: portfolio.updatedAt,
+  },
   analysis: {
-    trend, trendScore, trendConfidence, entryQuality, buyDecision, sellDecision, reasons,
-    disclaimer: 'Research recommendation based on delayed/indicative public technical data. It is not a guarantee of return and does not execute trades.',
+    trend, trendScore, trendConfidence, entryQuality,
+    technicalBuyDecision,
+    buyDecision,
+    sellDecision,
+    reasons,
+    disclaimer: 'Research recommendation based on delayed/indicative public technical data plus manually confirmed account context. It is not a guarantee of return and does not execute trades.',
   },
   paperTrades,
   paperSummary,
@@ -239,4 +301,4 @@ fs.writeFileSync('public/data.json', JSON.stringify({
   twoHourCandles,
 }, null, 2));
 
-console.log(`CSU V1.7 refresh complete: price=${price} mode=${quoteMode} hourly=${hourlyCandles.length} twoHour=${twoHourCandles.length} priceAsOf=${priceAsOf}`);
+console.log(`CSU V1.8 refresh complete: price=${price} technical=${technicalBuyDecision} accountAware=${buyDecision} holding=${holdingShares} mode=${quoteMode} hourly=${hourlyCandles.length} twoHour=${twoHourCandles.length} priceAsOf=${priceAsOf}`);
