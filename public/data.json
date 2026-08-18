@@ -1,8 +1,8 @@
 {
   "symbol": "CSU.TO",
-  "version": "1.7",
+  "version": "1.8",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-08-18T20:42:38.620Z",
+  "updatedAt": "2026-08-18T20:48:57.681Z",
   "asOf": "2026-08-18",
   "dataStatus": {
     "quoteMode": "Intraday delayed/indicative",
@@ -25,24 +25,45 @@
     "support20": 2534.219970703125,
     "resistance20": 3342.7099609375
   },
+  "accountContext": {
+    "holdingShares": 0,
+    "lastSell": {
+      "date": "2026-08-04T15:08:14-04:00",
+      "quantity": 1,
+      "price": 3188.56,
+      "orderType": "market",
+      "source": "Webull screenshot confirmed by user"
+    },
+    "preferredReentryMax": 2900,
+    "pctFromLastSell": -5.9635097940959225,
+    "pctToPreferredReentry": 3.393445245150861,
+    "strategy": "Re-enter on a meaningful pullback; do not chase a technical BUY when the entry is only balanced.",
+    "updatedAt": "2026-08-18T13:14:00-06:00"
+  },
   "analysis": {
     "trend": "Mixed / Sideways",
     "trendScore": 1,
     "trendConfidence": "58%",
     "entryQuality": "Balanced",
-    "buyDecision": "DO NOT BUY",
+    "technicalBuyDecision": "DO NOT BUY",
+    "buyDecision": "WAIT",
     "sellDecision": "HOLD / REVIEW",
     "reasons": [
       "Trend: Mixed / Sideways (+1/5)",
       "Entry quality: Balanced",
       "Momentum and SMA20 distance are balanced",
+      "Account context: currently not holding CSU",
+      "Last confirmed sell: $3188.56",
+      "Current price is -5.96% versus the last confirmed sell",
+      "Technical conditions do not justify re-entry yet",
       "Latest price lane: Intraday delayed/indicative",
-      "Buy decision: DO NOT BUY",
+      "Technical buy signal: DO NOT BUY",
+      "Account-aware buy decision: WAIT",
       "Sell decision: HOLD / REVIEW",
       "RSI14 is 50.1",
       "MACD is below signal"
     ],
-    "disclaimer": "Research recommendation based on delayed/indicative public technical data. It is not a guarantee of return and does not execute trades."
+    "disclaimer": "Research recommendation based on delayed/indicative public technical data plus manually confirmed account context. It is not a guarantee of return and does not execute trades."
   },
   "paperTrades": [
     {
