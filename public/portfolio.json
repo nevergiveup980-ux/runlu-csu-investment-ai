@@ -1,0 +1,14 @@
+{
+  "symbol": "CSU.TO",
+  "holdingShares": 0,
+  "lastSell": {
+    "date": "2026-08-04T15:08:14-04:00",
+    "quantity": 1,
+    "price": 3188.56,
+    "orderType": "market",
+    "source": "Webull screenshot confirmed by user"
+  },
+  "preferredReentryMax": 2900,
+  "strategy": "Re-enter on a meaningful pullback; do not chase a technical BUY when the entry is only balanced.",
+  "updatedAt": "2026-08-18T13:14:00-06:00"
+}
