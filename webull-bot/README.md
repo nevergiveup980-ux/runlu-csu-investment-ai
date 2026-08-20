@@ -1,46 +1,183 @@
-# RUNLU Webull Bot V1.0
+# RUNLU Webull Bot V2 — Trading Readiness
 
-A sandbox-first Webull OpenAPI integration for US stock research and account monitoring.
+A sandbox-first Webull OpenAPI integration that prepares RUNLU Investment AI for a future user-confirmed US-stock execution workflow.
 
-## Safety mode
+## What changed in V2
 
-V1.0 is **SANDBOX / READ-ONLY by default**. It is designed to verify authentication, account access, balances and positions before any order workflow is enabled.
+V2 adds a real order-execution scaffold, but it remains hard-locked to Webull Sandbox. It can now:
 
-No credentials belong in this repository. Use environment variables or GitHub Actions Secrets only.
+- connect to the Webull Sandbox account;
+- evaluate a mode-aware BUY gate before any order intent exists;
+- reject price-chasing setups that are excessively extended above SMA20;
+- create a conservative position-sizing plan from available cash and quantity caps;
+- preflight available buying power before BUY orders;
+- preflight current held quantity before SELL orders;
+- store each completed purchase as an independent TradeLot;
+- evaluate a protected SELL gate with minimum-profit floors and technical confirmation;
+- build a US equity LIMIT order using Webull's official `order_v3.place_order` SDK method;
+- validate every order through a separate risk guard before any broker call;
+- preview an order without touching Webull;
+- submit a sandbox order only after two independent arming steps;
+- normalize order/fill responses and detect fill-status transitions;
+- write structured trade lifecycle events to a Supabase journal through a server-side adapter;
+- run automated buy/sell/preflight/reconciliation/guard tests in GitHub Actions.
 
-## Required secrets
+## Default trading discipline
+
+Default mode: `SWING`.
+
+Other modes are available per TradeLot:
+- `POSITION` — more selective entry and exit thresholds for longer-term holdings;
+- `SWING` — default mode for multi-day / multi-week opportunities;
+- `INTRADAY` — available only when explicitly selected for a trade lot.
+
+The bot does not treat “price is up” as a sell reason by itself and does not treat “price is down” as a buy reason by itself.
+
+## Buy Gate
+
+A setup is classified as `BUY CANDIDATE`, `WATCH`, or `BLOCK` using multiple inputs such as SMA20/SMA50, RSI14, MACD, support, resistance and relative volume.
+
+A hard anti-chase rule blocks entries that are too far above SMA20 for the selected trading mode.
+
+Even a `BUY CANDIDATE` does not place an order. It passes to the sizing and order-intent layers first.
+
+## Position sizing and account preflight
+
+The sizing helper respects both available cash and configured quantity caps. It may return quantity `0` if the configured cash allocation cannot support one share.
+
+Before an order may advance:
+- BUY must pass an account buying-power check against estimated order notional;
+- SELL must pass a held-position quantity check for the requested symbol and quantity.
+
+These checks are intentionally separate from strategy scoring and the broker order call.
+
+## TradeLot + Sell Gate
+
+Each completed buy becomes its own TradeLot with entry price, quantity, time, fees, trading mode and notes. Normal sells are evaluated against that lot's break-even/protected floor rather than relying only on an account-wide average cost.
+
+A normal sale requires both:
+1. price protection; and
+2. sufficient technical sell confirmation.
+
+A separate major-risk-event override prevents the no-loss preference from becoming an unlimited-loss rule.
+
+See `TRADING_POLICY.md` for the full policy.
+
+## Fill reconciliation
+
+`order_reconcile.py` normalizes broker order responses into a stable internal record and detects changes in status, filled quantity and average fill price. This is the bridge for turning an accepted order into an actual filled TradeLot rather than assuming an order was filled merely because it was submitted.
+
+## Supabase trade journal
+
+`supabase_journal.py` writes server-side lifecycle events such as:
+- strategy decision;
+- preflight result;
+- order preview;
+- submitted order;
+- order-status change;
+- partial fill / full fill;
+- TradeLot creation;
+- sell-gate decision;
+- closed trade.
+
+The SQL scaffold is in `supabase_trade_journal.sql`.
+
+Required server-side variables for writes:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- optional `RUNLU_TRADE_JOURNAL_TABLE` (default `trade_journal`)
+
+The service-role key must never be exposed to browser code or committed to GitHub.
+
+## Safety architecture
+
+V2 deliberately rejects:
+
+- production/live endpoints;
+- symbols not listed in `RUNLU_ALLOWED_SYMBOLS`;
+- short selling;
+- market orders;
+- extended-hours orders;
+- non-US markets;
+- non-equity instruments;
+- quantities or notionals above configured limits.
+
+A command-line flag by itself is not sufficient to submit an order. Sandbox execution also requires `RUNLU_SANDBOX_TRADING_ARMED=YES`.
+
+**There is no production host path in V2. Real-money execution is not enabled.**
+
+## Required secrets for account connection
 
 - `WEBULL_APP_KEY`
 - `WEBULL_APP_SECRET`
 
-Optional for later phases:
+For sandbox order submission:
+
 - `WEBULL_ACCOUNT_ID`
-- `WEBULL_ACCESS_TOKEN`
+- Webull access-token configuration if required by the account / 2FA setup
 
-## Environment
+Never commit credentials to this repository. Store them in environment variables, Cloudflare secrets, Supabase Vault where appropriate, or GitHub Actions Secrets.
 
-Sandbox host: `api.sandbox.webull.com`
-Production host: `api.webull.com`
+## Risk-control environment variables
 
-V1.0 hard-locks the client to sandbox unless the code is deliberately changed in a later reviewed version.
+- `RUNLU_ALLOWED_SYMBOLS` — comma-separated explicit allowlist, for example `AAPL,MSFT`
+- `RUNLU_MAX_ORDER_QTY` — maximum shares per order; default `1`
+- `RUNLU_MAX_ORDER_NOTIONAL` — maximum estimated order value; default `1000`
+- `RUNLU_SANDBOX_TRADING_ARMED` — must equal exactly `YES` for an actual sandbox submission
 
-## First test
+An empty symbol allowlist blocks every order.
+
+## Connection smoke test
 
 ```bash
 pip install -r webull-bot/requirements.txt
 python webull-bot/src/sandbox_check.py
 ```
 
-Expected result: a sanitized account list / connection status. The script does not place orders.
+## Safe order preview
 
-## Planned phases
+This performs validation only and makes no broker call:
 
-1. Sandbox connection + account list
-2. Balance + positions read-only dashboard
-3. Market-data adapter
-4. BUY / HOLD / SELL research layer
-5. Sandbox order preview
-6. Paper execution log
-7. Optional user-confirmed live execution layer
+```bash
+export RUNLU_ALLOWED_SYMBOLS=AAPL
+export RUNLU_MAX_ORDER_QTY=1
+export RUNLU_MAX_ORDER_NOTIONAL=1000
+python webull-bot/src/sandbox_order.py \
+  --symbol AAPL --side BUY --quantity 1 --limit-price 180
+```
 
-Real-money autonomous trading is intentionally outside V1.0.
+## Intentional sandbox submission
+
+Only after the preview is correct and Webull Sandbox credentials are configured:
+
+```bash
+export RUNLU_SANDBOX_TRADING_ARMED=YES
+python webull-bot/src/sandbox_order.py \
+  --symbol AAPL --side BUY --quantity 1 --limit-price 180 \
+  --execute-sandbox
+```
+
+The runner always uses `api.sandbox.webull.com`.
+
+## Planned path toward future execution
+
+1. Sandbox connection and account discovery — built
+2. Buy Gate + anti-chase discipline — built
+3. Conservative position sizing — built
+4. TradeLot identity + protected Sell Gate — built
+5. Independent order risk guard — built
+6. Dry-run / order preview — built
+7. Guarded sandbox order placement — built
+8. Balance + positions pre-trade checks — scaffold built
+9. Order-detail / fill-status reconciliation — scaffold built
+10. Supabase execution journal and audit trail — scaffold built
+11. Strategy-to-order intent bridge
+12. User approval token / confirmation gate
+13. News + earnings intelligence layer
+14. Only after Webull eligibility and a separate security review: design a production adapter
+
+Target architecture:
+
+`market data + news/earnings -> buy gate -> sizing -> account preflight -> order intent -> risk guard -> user approval -> broker adapter -> fill reconciliation -> Supabase journal -> TradeLot -> monitoring -> sell gate -> order intent`
+
+This keeps analysis, approval, execution and recordkeeping as separate layers so future capabilities can be added without giving the research model unrestricted brokerage access.
