@@ -2,7 +2,7 @@
   "symbol": "CSU.TO",
   "version": "1.8",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-08-26T23:40:35.130Z",
+  "updatedAt": "2026-08-27T09:55:40.544Z",
   "asOf": "2026-08-26",
   "dataStatus": {
     "quoteMode": "Intraday delayed/indicative",
@@ -5117,7 +5117,7 @@
       "high": 3114.969970703125,
       "low": 3060.659912109375,
       "close": 3070.030029296875,
-      "volume": 44846,
+      "volume": 49200,
       "date": "2026-08-26"
     }
   ],
@@ -20753,7 +20753,7 @@
       "high": 3114.969970703125,
       "low": 3078.659912109375,
       "close": 3088.030029296875,
-      "volume": 15988
+      "volume": 16829
     },
     {
       "timestamp": 1787754600,
@@ -29746,7 +29746,7 @@
       "high": 3114.969970703125,
       "low": 3065.139892578125,
       "close": 3065.550048828125,
-      "volume": 17941
+      "volume": 18782
     },
     {
       "timestamp": 1787758200,
