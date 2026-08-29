@@ -1,0 +1,38 @@
+name: Webull Trading Readiness
+
+on:
+  pull_request:
+    paths:
+      - 'webull-bot/**'
+      - '.github/workflows/webull-trading-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run trading readiness unit tests
+        run: python -m unittest discover -s webull-bot/tests -p 'test_*.py' -v
+
+  dry-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Webull SDK
+        run: pip install -r webull-bot/requirements.txt
+      - name: Verify preview mode makes no broker call
+        env:
+          RUNLU_ALLOWED_SYMBOLS: AAPL
+          RUNLU_MAX_ORDER_QTY: '1'
+          RUNLU_MAX_ORDER_NOTIONAL: '1000'
+        run: python webull-bot/src/sandbox_order.py --symbol AAPL --side BUY --quantity 1 --limit-price 180
