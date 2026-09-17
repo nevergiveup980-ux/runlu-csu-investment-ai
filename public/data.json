@@ -2,26 +2,26 @@
   "symbol": "CSU.TO",
   "version": "1.8",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-09-17T18:18:21.440Z",
+  "updatedAt": "2026-09-17T22:52:18.663Z",
   "asOf": "2026-09-17",
   "dataStatus": {
     "quoteMode": "Intraday delayed/indicative",
     "quoteSource": "Yahoo public 5-minute chart feed",
-    "priceAsOf": "2026-09-17T18:14:36.000Z",
+    "priceAsOf": "2026-09-17T20:00:00.000Z",
     "refreshCadence": "Every 2 hours on weekdays",
     "staleAfterMinutes": 190,
     "hourlyChartAvailable": true
   },
   "indicators": {
-    "price": 2843.489990234375,
-    "dailyClose": 2843.489990234375,
-    "sma20": 2985.373486328125,
-    "sma50": 2958.69279296875,
-    "sma100": 2838.9439990234373,
-    "sma200": 2803.9513513183592,
-    "rsi14": 42.73494074545983,
-    "macd": -48.53045088807721,
-    "macdSignal": -25.758157986788486,
+    "price": 2829.89990234375,
+    "dailyClose": 2829.89990234375,
+    "sma20": 2984.693981933594,
+    "sma50": 2958.4209912109377,
+    "sma100": 2838.8080981445314,
+    "sma200": 2803.8834008789063,
+    "rsi14": 41.92221467161863,
+    "macd": -49.61456046339799,
+    "macdSignal": -25.97497990185264,
     "support20": 2713.8798828125,
     "resistance20": 3229.2099609375
   },
@@ -35,8 +35,8 @@
       "source": "Webull screenshot confirmed by user"
     },
     "preferredReentryMax": 2900,
-    "pctFromLastSell": -10.822126908875006,
-    "pctToPreferredReentry": -1.9486210264008652,
+    "pctFromLastSell": -11.248340870369377,
+    "pctToPreferredReentry": -2.417244746767244,
     "strategy": "Re-enter on a meaningful pullback; do not chase a technical BUY when the entry is only balanced.",
     "updatedAt": "2026-08-18T13:14:00-06:00"
   },
@@ -54,13 +54,13 @@
       "Price is not especially close to support or unusually extended",
       "Account context: currently not holding CSU",
       "Last confirmed sell: $3188.56",
-      "Current price is -10.82% versus the last confirmed sell",
+      "Current price is -11.25% versus the last confirmed sell",
       "Technical conditions do not justify re-entry yet",
       "Latest price lane: Intraday delayed/indicative",
       "Technical buy signal: DO NOT BUY",
       "Account-aware buy decision: WAIT",
       "Sell decision: SELL",
-      "RSI14 is 42.7",
+      "RSI14 is 41.9",
       "MACD is below signal"
     ],
     "disclaimer": "Research recommendation based on delayed/indicative public technical data plus manually confirmed account context. It is not a guarantee of return and does not execute trades."
@@ -5119,40 +5119,13 @@
       "time": "2026-09-17T13:30:00.000Z",
       "open": 2871.780029296875,
       "high": 2871.780029296875,
-      "low": 2830,
-      "close": 2843.489990234375,
-      "volume": 11366,
+      "low": 2827.2900390625,
+      "close": 2829.89990234375,
+      "volume": 30644,
       "date": "2026-09-17"
     }
   ],
   "hourlyCandles": [
-    {
-      "timestamp": 1758130200,
-      "time": "2025-09-17T17:30:00.000Z",
-      "open": 4254.56982421875,
-      "high": 4287.18505859375,
-      "low": 4245.02978515625,
-      "close": 4286.06982421875,
-      "volume": 0
-    },
-    {
-      "timestamp": 1758133800,
-      "time": "2025-09-17T18:30:00.000Z",
-      "open": 4286.5,
-      "high": 4300,
-      "low": 4261.18994140625,
-      "close": 4293.14013671875,
-      "volume": 4083
-    },
-    {
-      "timestamp": 1758137400,
-      "time": "2025-09-17T19:30:00.000Z",
-      "open": 4290.6298828125,
-      "high": 4290.6298828125,
-      "low": 4272.68017578125,
-      "close": 4280.330078125,
-      "volume": 3374
-    },
     {
       "timestamp": 1758202200,
       "time": "2025-09-18T13:30:00.000Z",
@@ -20814,34 +20787,43 @@
       "volume": 1643
     },
     {
-      "timestamp": 1789668876,
-      "time": "2026-09-17T18:14:36.000Z",
-      "open": 2843.489990234375,
-      "high": 2843.489990234375,
-      "low": 2843.489990234375,
-      "close": 2843.489990234375,
+      "timestamp": 1789666200,
+      "time": "2026-09-17T17:30:00.000Z",
+      "open": 2839.0048828125,
+      "high": 2843.699951171875,
+      "low": 2834.8701171875,
+      "close": 2842,
+      "volume": 1269
+    },
+    {
+      "timestamp": 1789669800,
+      "time": "2026-09-17T18:30:00.000Z",
+      "open": 2843.300048828125,
+      "high": 2843.300048828125,
+      "low": 2827.2900390625,
+      "close": 2835,
+      "volume": 2862
+    },
+    {
+      "timestamp": 1789673400,
+      "time": "2026-09-17T19:30:00.000Z",
+      "open": 2834.75,
+      "high": 2845,
+      "low": 2829.27001953125,
+      "close": 2831.409912109375,
+      "volume": 5247
+    },
+    {
+      "timestamp": 1789675200,
+      "time": "2026-09-17T20:00:00.000Z",
+      "open": 2829.89990234375,
+      "high": 2829.89990234375,
+      "low": 2829.89990234375,
+      "close": 2829.89990234375,
       "volume": 0
     }
   ],
   "twoHourCandles": [
-    {
-      "timestamp": 1758130200,
-      "time": "2025-09-17T17:30:00.000Z",
-      "open": 4254.56982421875,
-      "high": 4300,
-      "low": 4245.02978515625,
-      "close": 4293.14013671875,
-      "volume": 4083
-    },
-    {
-      "timestamp": 1758137400,
-      "time": "2025-09-17T19:30:00.000Z",
-      "open": 4290.6298828125,
-      "high": 4290.6298828125,
-      "low": 4272.68017578125,
-      "close": 4280.330078125,
-      "volume": 3374
-    },
     {
       "timestamp": 1758202200,
       "time": "2025-09-18T13:30:00.000Z",
@@ -29780,13 +29762,22 @@
       "volume": 4794
     },
     {
-      "timestamp": 1789668876,
-      "time": "2026-09-17T18:14:36.000Z",
-      "open": 2843.489990234375,
-      "high": 2843.489990234375,
-      "low": 2843.489990234375,
-      "close": 2843.489990234375,
-      "volume": 0
+      "timestamp": 1789666200,
+      "time": "2026-09-17T17:30:00.000Z",
+      "open": 2839.0048828125,
+      "high": 2843.699951171875,
+      "low": 2827.2900390625,
+      "close": 2835,
+      "volume": 4131
+    },
+    {
+      "timestamp": 1789673400,
+      "time": "2026-09-17T19:30:00.000Z",
+      "open": 2834.75,
+      "high": 2845,
+      "low": 2829.27001953125,
+      "close": 2829.89990234375,
+      "volume": 5247
     }
   ]
 }
