@@ -2,8 +2,8 @@
   "symbol": "CSU.TO",
   "version": "1.8",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-09-23T00:38:39.126Z",
-  "asOf": "2026-09-22",
+  "updatedAt": "2026-09-23T07:48:23.469Z",
+  "asOf": "2026-09-21",
   "dataStatus": {
     "quoteMode": "Intraday delayed/indicative",
     "quoteSource": "Yahoo public 5-minute chart feed",
@@ -14,14 +14,14 @@
   },
   "indicators": {
     "price": 2770.260009765625,
-    "dailyClose": 2770.260009765625,
-    "sma20": 2943.921496582031,
-    "sma50": 2959.9087939453125,
-    "sma100": 2849.6057983398437,
-    "sma200": 2796.215751953125,
-    "rsi14": 38.969443040564066,
-    "macd": -60.369535221866954,
-    "macdSignal": -40.82155254684947,
+    "dailyClose": 2786.969970703125,
+    "sma20": 2960.3419921875,
+    "sma50": 2960.5463916015624,
+    "sma100": 2846.3467993164063,
+    "sma200": 2798.831551513672,
+    "rsi14": 39.85336566119517,
+    "macd": -55.82383608471491,
+    "macdSignal": -35.934556878095094,
     "support20": 2713.8798828125,
     "resistance20": 3229.2099609375
   },
@@ -61,7 +61,7 @@
       "Technical buy signal: DO NOT BUY",
       "Account-aware buy decision: WAIT",
       "Sell decision: SELL",
-      "RSI14 is 39.0",
+      "RSI14 is 39.9",
       "MACD is below signal"
     ],
     "disclaimer": "Research recommendation based on delayed/indicative public technical data plus manually confirmed account context. It is not a guarantee of return and does not execute trades."
@@ -5104,16 +5104,6 @@
       "close": 2786.969970703125,
       "volume": 46800,
       "date": "2026-09-21"
-    },
-    {
-      "timestamp": 1790083800,
-      "time": "2026-09-22T13:30:00.000Z",
-      "open": 2819.97998046875,
-      "high": 2819.97998046875,
-      "low": 2736.830078125,
-      "close": 2770.260009765625,
-      "volume": 45892,
-      "date": "2026-09-22"
     }
   ],
   "hourlyCandles": [
@@ -20739,7 +20729,7 @@
       "high": 2819.97998046875,
       "low": 2774.179931640625,
       "close": 2774.179931640625,
-      "volume": 4222
+      "volume": 0
     },
     {
       "timestamp": 1790087400,
@@ -29723,7 +29713,7 @@
       "high": 2819.97998046875,
       "low": 2746,
       "close": 2746,
-      "volume": 7220
+      "volume": 2998
     },
     {
       "timestamp": 1790091000,
