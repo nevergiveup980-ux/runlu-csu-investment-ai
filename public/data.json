@@ -2,26 +2,26 @@
   "symbol": "CSU.TO",
   "version": "1.8",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-09-23T07:48:23.469Z",
-  "asOf": "2026-09-21",
+  "updatedAt": "2026-09-23T13:41:09.061Z",
+  "asOf": "2026-09-23",
   "dataStatus": {
-    "quoteMode": "Intraday delayed/indicative",
-    "quoteSource": "Yahoo public 5-minute chart feed",
-    "priceAsOf": "2026-09-22T20:00:00.000Z",
+    "quoteMode": "Daily fallback",
+    "quoteSource": "Yahoo public daily chart feed",
+    "priceAsOf": "2026-09-23T13:30:00.000Z",
     "refreshCadence": "Every 2 hours on weekdays",
     "staleAfterMinutes": 190,
     "hourlyChartAvailable": true
   },
   "indicators": {
-    "price": 2770.260009765625,
-    "dailyClose": 2786.969970703125,
-    "sma20": 2960.3419921875,
-    "sma50": 2960.5463916015624,
-    "sma100": 2846.3467993164063,
-    "sma200": 2798.831551513672,
-    "rsi14": 39.85336566119517,
-    "macd": -55.82383608471491,
-    "macdSignal": -35.934556878095094,
+    "price": 2779.989990234375,
+    "dailyClose": 2779.989990234375,
+    "sma20": 2944.407995605469,
+    "sma50": 2960.1033935546875,
+    "sma100": 2849.7030981445314,
+    "sma200": 2796.264401855469,
+    "rsi14": 39.479308170931496,
+    "macd": -59.59335444373346,
+    "macdSignal": -40.666316391222765,
     "support20": 2713.8798828125,
     "resistance20": 3229.2099609375
   },
@@ -35,8 +35,8 @@
       "source": "Webull screenshot confirmed by user"
     },
     "preferredReentryMax": 2900,
-    "pctFromLastSell": -13.118774312993164,
-    "pctToPreferredReentry": -4.473792766702589,
+    "pctFromLastSell": -12.813621502045592,
+    "pctToPreferredReentry": -4.1382761988146495,
     "strategy": "Re-enter on a meaningful pullback; do not chase a technical BUY when the entry is only balanced.",
     "updatedAt": "2026-08-18T13:14:00-06:00"
   },
@@ -55,13 +55,13 @@
       "Price is more than ~5% below SMA50",
       "Account context: currently not holding CSU",
       "Last confirmed sell: $3188.56",
-      "Current price is -13.12% versus the last confirmed sell",
+      "Current price is -12.81% versus the last confirmed sell",
       "Technical conditions do not justify re-entry yet",
-      "Latest price lane: Intraday delayed/indicative",
+      "Latest price lane: Daily fallback",
       "Technical buy signal: DO NOT BUY",
       "Account-aware buy decision: WAIT",
       "Sell decision: SELL",
-      "RSI14 is 39.9",
+      "RSI14 is 39.5",
       "MACD is below signal"
     ],
     "disclaimer": "Research recommendation based on delayed/indicative public technical data plus manually confirmed account context. It is not a guarantee of return and does not execute trades."
@@ -5104,6 +5104,16 @@
       "close": 2786.969970703125,
       "volume": 46800,
       "date": "2026-09-21"
+    },
+    {
+      "timestamp": 1790170200,
+      "time": "2026-09-23T13:30:00.000Z",
+      "open": 2779.989990234375,
+      "high": 2779.989990234375,
+      "low": 2779.989990234375,
+      "close": 2779.989990234375,
+      "volume": 911,
+      "date": "2026-09-23"
     }
   ],
   "hourlyCandles": [
@@ -20786,12 +20796,12 @@
       "volume": 7284
     },
     {
-      "timestamp": 1790107200,
-      "time": "2026-09-22T20:00:00.000Z",
-      "open": 2770.260009765625,
-      "high": 2770.260009765625,
-      "low": 2770.260009765625,
-      "close": 2770.260009765625,
+      "timestamp": 1790170693,
+      "time": "2026-09-23T13:38:13.000Z",
+      "open": 2779.989990234375,
+      "high": 2779.989990234375,
+      "low": 2779.989990234375,
+      "close": 2779.989990234375,
       "volume": 0
     }
   ],
@@ -29739,8 +29749,17 @@
       "open": 2777.300048828125,
       "high": 2778.89990234375,
       "low": 2762.070068359375,
-      "close": 2770.260009765625,
+      "close": 2775.090087890625,
       "volume": 7284
+    },
+    {
+      "timestamp": 1790170693,
+      "time": "2026-09-23T13:38:13.000Z",
+      "open": 2779.989990234375,
+      "high": 2779.989990234375,
+      "low": 2779.989990234375,
+      "close": 2779.989990234375,
+      "volume": 0
     }
   ]
 }
