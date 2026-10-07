@@ -62,6 +62,11 @@
  </div>
  <div id="timeline" style="margin-top:14px"></div>
 </div>
+<div class="card section">
+ <div class="muted">What have I learned?</div>
+ <div class="big" id="lessonTitle">Your pattern will appear here.</div>
+ <div id="lessons" class="mini" style="margin-top:10px">Review a few decisions and RUNLU INVEST will summarize your own investing behavior locally on this device.</div>
+</div>
 </div>
 <script>
 const KEY='runlu-invest-v01';
@@ -80,12 +85,30 @@ function render(){
  $('decisionCount').textContent=decisions.length;
  $('reviewedCount').textContent=reviewed.length;
  $('positiveCount').textContent=reviewed.filter(m=>m.outcome==='POSITIVE').length;
+ renderLessons(mem,reviewed);
  $('holdings').innerHTML=state.holdings.map(x=>'<div class="holding '+(x.id===state.selected?'active':'')+'" data-id="'+x.id+'"><div><div class="symbol">'+x.symbol+'</div><div class="muted">'+(x.name||'Holding')+'</div></div><span>›</span></div>').join('');
  document.querySelectorAll('.holding').forEach(x=>x.onclick=()=>{state.selected=x.dataset.id;save();render();loadMarket()});
  $('holdingTitle').textContent=h?(h.name||h.symbol)+' · '+h.symbol:'Choose a holding';
  $('timeline').innerHTML=mem.length?mem.slice().reverse().map(m=>'<div class="memory"><div class="memoryHead"><strong>'+m.action+(m.price?' · 
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderLessons(mem,reviewed){
+ const title=$('lessonTitle'),box=$('lessons');
+ if(!mem.length){title.textContent='Your pattern will appear here.';box.textContent='Start with one decision memory.';return}
+ if(!reviewed.length){title.textContent='Memory is building.';box.textContent='You have '+mem.length+' memory point'+(mem.length===1?'':'s')+'. Review outcomes to turn history into lessons.';return}
+ const pos=reviewed.filter(m=>m.outcome==='POSITIVE').length,neg=reviewed.filter(m=>m.outcome==='NEGATIVE').length,mix=reviewed.filter(m=>m.outcome==='MIXED').length;
+ const actions={};mem.forEach(m=>actions[m.action]=(actions[m.action]||0)+1);
+ const topAction=Object.entries(actions).sort((a,b)=>b[1]-a[1])[0];
+ const stop=new Set(['the','and','that','this','with','from','have','what','when','then','because','into','your','about','after','before','were','was','are','for','but','not','you','its','too','very','just']);
+ const words={};mem.forEach(m=>(m.reason||'').toLowerCase().match(/[a-z]{4,}/g)?.forEach(w=>{if(!stop.has(w))words[w]=(words[w]||0)+1}));
+ const themes=Object.entries(words).sort((a,b)=>b[1]-a[1]).slice(0,3).filter(x=>x[1]>1).map(x=>x[0]);
+ title.textContent=pos>neg?'Reviewed decisions lean positive.':neg>pos?'Reviewed decisions need a closer look.':'Reviewed decisions are mixed.';
+ const lines=['Reviewed outcomes: '+pos+' positive · '+mix+' mixed · '+neg+' negative.'];
+ if(topAction)lines.push('Most recorded action: '+topAction[0]+' ('+topAction[1]+').');
+ if(themes.length)lines.push('Recurring words in your reasons: '+themes.join(', ')+'.');
+ lines.push('This is a reflection of your own records, not investment advice or a prediction.');
+ box.innerHTML=lines.map(x=>'• '+escapeHtml(x)).join('<br>');
+}
 async function loadMarket(){
  const h=selected(); if(!h)return;
  $('marketStatus').textContent='Loading '+h.symbol+' research…';$('price').textContent=$('rsi').textContent=$('stance').textContent='—';
