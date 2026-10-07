@@ -50,10 +50,16 @@
  <div class="form">
   <select id="action"><option>BUY</option><option>ADD</option><option>REDUCE</option><option>SELL</option><option>NOTE</option><option>REVIEW</option></select>
   <input id="memoryPrice" inputmode="decimal" placeholder="Price (optional)">
-  <textarea id="reason" placeholder="Why? What did you believe, notice, or expect at the time?"></textarea>
+  <textarea id="reason" placeholder="Why? What did you believe or notice at the time?"></textarea>
+  <textarea id="expectation" placeholder="What do you expect to happen next? (optional)"></textarea>
   <button class="primary" id="saveMemory">Save memory point</button>
  </div>
  <div class="safe muted">Stored locally on this device in V0.1. It does not send or place an order.</div>
+ <div class="grid" style="margin-top:14px">
+  <div><div class="muted">Decisions</div><div class="big" id="decisionCount">0</div></div>
+  <div><div class="muted">Reviewed</div><div class="big" id="reviewedCount">0</div></div>
+  <div><div class="muted">Positive outcomes</div><div class="big" id="positiveCount">0</div></div>
+ </div>
  <div id="timeline" style="margin-top:14px"></div>
 </div>
 </div>
@@ -69,10 +75,28 @@ function render(){
  $('holdingCount').textContent=state.holdings.length;
  const h=selected(); $('selectedSymbol').textContent=h?.symbol||'—';
  const mem=state.memories.filter(m=>m.holdingId===state.selected); $('memoryCount').textContent=mem.length;
+ const decisions=mem.filter(m=>['BUY','ADD','REDUCE','SELL'].includes(m.action));
+ const reviewed=mem.filter(m=>m.outcome&&m.outcome!=='PENDING');
+ $('decisionCount').textContent=decisions.length;
+ $('reviewedCount').textContent=reviewed.length;
+ $('positiveCount').textContent=reviewed.filter(m=>m.outcome==='POSITIVE').length;
  $('holdings').innerHTML=state.holdings.map(x=>'<div class="holding '+(x.id===state.selected?'active':'')+'" data-id="'+x.id+'"><div><div class="symbol">'+x.symbol+'</div><div class="muted">'+(x.name||'Holding')+'</div></div><span>›</span></div>').join('');
  document.querySelectorAll('.holding').forEach(x=>x.onclick=()=>{state.selected=x.dataset.id;save();render();loadMarket()});
  $('holdingTitle').textContent=h?(h.name||h.symbol)+' · '+h.symbol:'Choose a holding';
- $('timeline').innerHTML=mem.length?mem.slice().reverse().map(m=>'<div class="memory"><div class="memoryHead"><strong>'+m.action+(m.price?' · $'+m.price:'')+'</strong><span class="muted">'+new Date(m.occurredAt).toLocaleString()+'</span></div><div style="margin-top:7px">'+escapeHtml(m.reason||'No reason recorded.')+'</div></div>').join(''):'<div class="muted">No memory yet. Your investment story starts with the first decision you record.</div>';
+ $('timeline').innerHTML=mem.length?mem.slice().reverse().map(m=>'<div class="memory"><div class="memoryHead"><strong>'+m.action+(m.price?' · 
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function loadMarket(){
+ const h=selected(); if(!h)return;
+ $('marketStatus').textContent='Loading '+h.symbol+' research…';$('price').textContent=$('rsi').textContent=$('stance').textContent='—';
+ try{const r=await fetch('/api/market?symbol='+encodeURIComponent(h.symbol));const d=await r.json();if(!r.ok)throw new Error(d.error||'Market data unavailable');$('price').textContent='$'+Number(d.indicators.price).toLocaleString(undefined,{maximumFractionDigits:2});$('rsi').textContent=d.indicators.rsi14==null?'—':Number(d.indicators.rsi14).toFixed(1);$('stance').textContent=d.analysis.stance||'—';$('marketStatus').textContent='Market research loaded · '+(d.asOf||'latest available')+' · read-only';}catch(e){$('marketStatus').textContent=e.message}
+}
+$('addHolding').onclick=()=>{const symbol=$('newSymbol').value.trim().toUpperCase();if(!/^[A-Z0-9.^=-]{1,20}$/.test(symbol))return alert('Enter a valid market symbol.');if(state.holdings.some(h=>h.symbol===symbol))return alert('That holding is already in your portfolio.');const id='h-'+Date.now();state.holdings.push({id,symbol,name:$('newName').value.trim()||symbol});state.selected=id;save();$('newSymbol').value='';$('newName').value='';render();loadMarket()};
+function reviewMemory(id){const m=state.memories.find(x=>x.id===id);if(!m)return;const result=prompt('Outcome? Enter POSITIVE, MIXED, NEGATIVE, or PENDING',m.outcome||'PENDING');if(result===null)return;const outcome=result.trim().toUpperCase();if(!['POSITIVE','MIXED','NEGATIVE','PENDING'].includes(outcome))return alert('Use POSITIVE, MIXED, NEGATIVE, or PENDING.');const note=prompt('What actually happened? What did you learn?',m.outcomeNote||'');if(note===null)return;m.outcome=outcome;m.outcomeNote=note.trim();m.reviewedAt=new Date().toISOString();save();render()}
+$('saveMemory').onclick=()=>{const h=selected();if(!h)return alert('Choose a holding first.');const reason=$('reason').value.trim();if(!reason)return alert('Write the reason you want to remember.');state.memories.push({id:'m-'+Date.now(),holdingId:h.id,occurredAt:new Date().toISOString(),action:$('action').value,price:$('memoryPrice').value.trim()||null,reason,expectation:$('expectation').value.trim(),outcome:'PENDING'});save();$('reason').value='';$('expectation').value='';$('memoryPrice').value='';render()};
+render();loadMarket();
+</script></body></html>+m.price:'')+'</strong><span class="muted">'+new Date(m.occurredAt).toLocaleString()+'</span></div><div style="margin-top:7px">'+escapeHtml(m.reason||'No reason recorded.')+'</div>'+(m.expectation?'<div class="mini"><strong>Expected:</strong> '+escapeHtml(m.expectation)+'</div>':'')+'<div class="row" style="margin-top:9px"><span class="tag">Outcome: '+(m.outcome||'PENDING')+'</span>'+(m.outcomeNote?'<span class="muted">'+escapeHtml(m.outcomeNote)+'</span>':'')+'<button data-review="'+m.id+'" style="padding:5px 9px">Review</button></div></div>').join(''):'<div class="muted">No memory yet. Your investment story starts with the first decision you record.</div>';
+ document.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>reviewMemory(b.dataset.review));
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function loadMarket(){
