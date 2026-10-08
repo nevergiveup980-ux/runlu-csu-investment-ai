@@ -88,7 +88,7 @@ function render(){
  $('reviewedCount').textContent=reviewed.length;
  $('positiveCount').textContent=reviewed.filter(m=>m.outcome==='POSITIVE').length;
  renderLessons(mem,reviewed);renderStory(h,mem);
- $('holdings').innerHTML=state.holdings.map(x=>'<div class="holding '+(x.id===state.selected?'active':'')+'" data-id="'+x.id+'"><div><div class="symbol">'+x.symbol+'</div><div class="muted">'+(x.name||'Holding')+'</div></div><span>›</span></div>').join('');
+ $('holdings').innerHTML=state.holdings.map(x=>'<div class="holding '+(x.id===state.selected?'active':'')+'" data-id="'+x.id+'"><div><div class="symbol">'+escapeHtml(x.symbol)+'</div><div class="muted">'+escapeHtml(x.name||'Holding')+'</div></div><span>›</span></div>').join('');
  document.querySelectorAll('.holding').forEach(x=>x.onclick=()=>{state.selected=x.dataset.id;save();render();loadMarket()});
  $('holdingTitle').textContent=h?(h.name||h.symbol)+' · '+h.symbol:'Choose a holding';
  $('timeline').innerHTML=mem.length?mem.slice().reverse().map(m=>'<div class="memory"><div class="memoryHead"><strong>'+m.action+(m.price?' · 
