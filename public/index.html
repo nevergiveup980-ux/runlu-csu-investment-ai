@@ -62,6 +62,7 @@
  </div>
  <div id="timeline" style="margin-top:14px"></div>
 </div>
+<div class="card section"><div class="muted">Holding Story</div><div class="big" id="storyTitle">Your investment story</div><div id="story" class="mini"></div></div>
 <div class="card section">
  <div class="muted">What have I learned?</div>
  <div class="big" id="lessonTitle">Your pattern will appear here.</div>
@@ -85,13 +86,27 @@ function render(){
  $('decisionCount').textContent=decisions.length;
  $('reviewedCount').textContent=reviewed.length;
  $('positiveCount').textContent=reviewed.filter(m=>m.outcome==='POSITIVE').length;
- renderLessons(mem,reviewed);
+ renderLessons(mem,reviewed);renderStory(h,mem);
  $('holdings').innerHTML=state.holdings.map(x=>'<div class="holding '+(x.id===state.selected?'active':'')+'" data-id="'+x.id+'"><div><div class="symbol">'+x.symbol+'</div><div class="muted">'+(x.name||'Holding')+'</div></div><span>›</span></div>').join('');
  document.querySelectorAll('.holding').forEach(x=>x.onclick=()=>{state.selected=x.dataset.id;save();render();loadMarket()});
  $('holdingTitle').textContent=h?(h.name||h.symbol)+' · '+h.symbol:'Choose a holding';
  $('timeline').innerHTML=mem.length?mem.slice().reverse().map(m=>'<div class="memory"><div class="memoryHead"><strong>'+m.action+(m.price?' · 
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderStory(h,mem){
+ const title=$('storyTitle'),box=$('story');
+ title.textContent=h?(h.name||h.symbol)+' · My Story':'Your investment story';
+ if(!mem.length){box.textContent='No decisions recorded yet. Your story begins with your first memory.';return}
+ const sorted=[...mem].sort((a,b)=>a.occurredAt.localeCompare(b.occurredAt));
+ const lines=sorted.map((m,i)=>{
+ const date=new Date(m.occurredAt).toLocaleDateString();
+ const price=m.price?' at '+m.price:'';
+ const expectation=m.expectation?' Expected: '+m.expectation:'';
+ const result=m.outcome&&m.outcome!=='PENDING'?' Outcome: '+m.outcome+(m.outcomeNote?' — '+m.outcomeNote:''):' Awaiting review.';
+ return (i+1)+'. '+date+' · '+m.action+price+'. '+(m.reason||'')+expectation+result;
+ });
+ box.innerHTML=lines.map(x=>'<div class="memory">'+escapeHtml(x)+'</div>').join('');
+}
 function renderLessons(mem,reviewed){
  const title=$('lessonTitle'),box=$('lessons');
  if(!mem.length){title.textContent='Your pattern will appear here.';box.textContent='Start with one decision memory.';return}
