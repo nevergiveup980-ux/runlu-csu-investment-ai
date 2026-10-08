@@ -144,16 +144,4 @@ $('backupFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)retur
  const previous=localStorage.getItem(KEY);
  try{localStorage.setItem(KEY,JSON.stringify(data));const verified=JSON.parse(localStorage.getItem(KEY));if(JSON.stringify(verified)!==JSON.stringify(data))throw Error('Restore verification failed');state=verified;render();loadMarket();alert('Backup restored and verified on this device.')}catch(writeError){if(previous===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,previous);throw writeError}}catch(err){alert('Import failed: '+err.message)}finally{e.target.value=''}};
 render();loadMarket();
-</script></body></html>+m.price:'')+'</strong><span class="muted">'+new Date(m.occurredAt).toLocaleString()+'</span></div><div style="margin-top:7px">'+escapeHtml(m.reason||'No reason recorded.')+'</div>'+(m.expectation?'<div class="mini"><strong>Expected:</strong> '+escapeHtml(m.expectation)+'</div>':'')+'<div class="row" style="margin-top:9px"><span class="tag">Outcome: '+(m.outcome||'PENDING')+'</span>'+(m.outcomeNote?'<span class="muted">'+escapeHtml(m.outcomeNote)+'</span>':'')+'<button data-review="'+m.id+'" style="padding:5px 9px">Review</button></div></div>').join(''):'<div class="muted">No memory yet. Your investment story starts with the first decision you record.</div>';
- document.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>reviewMemory(b.dataset.review));
-}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-async function loadMarket(){
- const h=selected(); if(!h)return;
- $('marketStatus').textContent='Loading '+h.symbol+' research…';$('price').textContent=$('rsi').textContent=$('stance').textContent='—';
- try{const r=await fetch('/api/market?symbol='+encodeURIComponent(h.symbol));const d=await r.json();if(!r.ok)throw new Error(d.error||'Market data unavailable');$('price').textContent='$'+Number(d.indicators.price).toLocaleString(undefined,{maximumFractionDigits:2});$('rsi').textContent=d.indicators.rsi14==null?'—':Number(d.indicators.rsi14).toFixed(1);$('stance').textContent=d.analysis.stance||'—';$('marketStatus').textContent='Market research loaded · '+(d.asOf||'latest available')+' · read-only';}catch(e){$('marketStatus').textContent=e.message}
-}
-$('addHolding').onclick=()=>{const symbol=$('newSymbol').value.trim().toUpperCase();if(!/^[A-Z0-9.^=-]{1,20}$/.test(symbol))return alert('Enter a valid market symbol.');if(state.holdings.some(h=>h.symbol===symbol))return alert('That holding is already in your portfolio.');const id='h-'+Date.now();state.holdings.push({id,symbol,name:$('newName').value.trim()||symbol});state.selected=id;save();$('newSymbol').value='';$('newName').value='';render();loadMarket()};
-$('saveMemory').onclick=()=>{const h=selected();if(!h)return alert('Choose a holding first.');const reason=$('reason').value.trim();if(!reason)return alert('Write the reason you want to remember.');state.memories.push({id:'m-'+Date.now(),holdingId:h.id,occurredAt:new Date().toISOString(),action:$('action').value,price:$('memoryPrice').value.trim()||null,reason});save();$('reason').value='';$('memoryPrice').value='';render()};
-render();loadMarket();
 </script></body></html>
