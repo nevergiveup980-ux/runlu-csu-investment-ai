@@ -127,10 +127,23 @@ function renderLessons(mem,reviewed){
  box.innerHTML=lines.map(x=>'• '+escapeHtml(x)).join('<br>');
 }
 async function loadMarket(){
- const h=selected(); if(!h)return;
- $('marketStatus').textContent='Loading '+h.symbol+' research…';$('price').textContent=$('rsi').textContent=$('stance').textContent='—';
- try{const r=await fetch('/api/market?symbol='+encodeURIComponent(h.symbol));const d=await r.json();if(!r.ok)throw new Error(d.error||'Market data unavailable');if(!d.indicators||!d.analysis||!Number.isFinite(Number(d.indicators.price)))throw new Error('Market response incomplete; your saved notes are safe.');$('price').textContent='$('marketStatus').textContent='Market research loaded · '+(d.asOf||'latest available')+' · read-only';}catch(e){$('marketStatus').textContent=e.message}
+ const h=selected();if(!h)return;
+ $('marketStatus').textContent='Loading '+h.symbol+' research…';
+ $('price').textContent=$('rsi').textContent=$('stance').textContent='—';
+ try{
+  const r=await fetch('/api/market?symbol='+encodeURIComponent(h.symbol));
+  if(!r.ok)throw new Error('Market data unavailable (HTTP '+r.status+'). Your saved notes are safe.');
+  const d=await r.json();
+  const price=Number(d?.indicators?.price);
+  if(!d?.indicators||!d?.analysis||!Number.isFinite(price))throw new Error('Market response incomplete; your saved notes are safe.');
+  $('price').textContent='$'+price.toLocaleString(undefined,{maximumFractionDigits:2});
+  const rsi=Number(d.indicators.rsi14);
+  $('rsi').textContent=d.indicators.rsi14==null||!Number.isFinite(rsi)?'—':rsi.toFixed(1);
+  $('stance').textContent=d.analysis.stance||'—';
+  $('marketStatus').textContent='Market research loaded · '+(d.asOf||'latest available')+' · read-only';
+ }catch(e){$('marketStatus').textContent=e instanceof Error?e.message:'Market data unavailable; your saved notes are safe.'}
 }
+
 $('addHolding').onclick=()=>{const symbol=$('newSymbol').value.trim().toUpperCase();if(!/^[A-Z0-9.^=-]{1,20}$/.test(symbol))return alert('Enter a valid market symbol.');if(state.holdings.some(h=>h.symbol===symbol))return alert('That holding is already in your portfolio.');const id='h-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);state.holdings.push({id,symbol,name:$('newName').value.trim()||symbol});state.selected=id;save();$('newSymbol').value='';$('newName').value='';render();loadMarket()};
 function reviewMemory(id){const m=state.memories.find(x=>x.id===id);if(!m)return;const result=prompt('Outcome? Enter POSITIVE, MIXED, NEGATIVE, or PENDING',m.outcome||'PENDING');if(result===null)return;const outcome=result.trim().toUpperCase();if(!['POSITIVE','MIXED','NEGATIVE','PENDING'].includes(outcome))return alert('Use POSITIVE, MIXED, NEGATIVE, or PENDING.');const note=prompt('What actually happened? What did you learn?',m.outcomeNote||'');if(note===null)return;m.outcome=outcome;m.outcomeNote=note.trim();m.reviewedAt=new Date().toISOString();save();render()}
 $('saveMemory').onclick=()=>{const h=selected();if(!h)return alert('Choose a holding first.');const reason=$('reason').value.trim();if(!reason)return alert('Write the reason you want to remember.');if(reason.length>10000||$('expectation').value.length>10000)return alert('Memory text is too long.');state.memories.push({id:'m-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),holdingId:h.id,occurredAt:new Date().toISOString(),action:$('action').value,price:$('memoryPrice').value.trim()||null,reason,expectation:$('expectation').value.trim(),outcome:'PENDING'});save();$('reason').value='';$('expectation').value='';$('memoryPrice').value='';render()};
