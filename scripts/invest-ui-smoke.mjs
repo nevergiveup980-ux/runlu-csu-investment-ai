@@ -22,7 +22,7 @@ assert.ok(html.includes("escapeHtml(x.name||'Holding')"),'holding names must be 
 assert.ok(html.includes("escapeHtml(m.reason||'No reason recorded.')"),'memory reasons must be escaped');
 assert.ok(html.includes("escapeHtml(m.price)"),'memory prices must be escaped');
 assert.ok(html.includes("escapeHtml(m.id)"),'review IDs must be escaped');
-assert.ok(html.includes("!/^h-[A-Za-z0-9-]{1,70}$/.test(h.id)"),'backup holding IDs must be validated');
+assert.ok(html.includes("h.id==='csu'||/^h-[A-Za-z0-9-]{1,70}$/.test(h.id)"),'backup holding IDs must allow built-in CSU ID and validate other IDs');
 assert.ok(html.includes("!/^m-[A-Za-z0-9-]{1,70}$/.test(m.id)"),'backup memory IDs must be validated');
 assert.ok(html.includes('localStorage.setItem(KEY,JSON.stringify(data))'),'restore must persist data');
 assert.ok(html.includes('localStorage.setItem(KEY,previous)'),'restore must roll back on failure');
