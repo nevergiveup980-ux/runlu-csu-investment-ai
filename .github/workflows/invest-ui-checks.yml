@@ -21,8 +21,9 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - name: Browser interaction test
         run: |
           python3 -m http.server 4173 --directory public > /tmp/invest-http.log 2>&1 &
           node scripts/invest-browser-test.mjs
+          INVEST_BROWSER=webkit node scripts/invest-browser-test.mjs
