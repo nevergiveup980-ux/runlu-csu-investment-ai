@@ -20,5 +20,21 @@ try{
  assert.match(await page.locator('#selectedSymbol').innerText(),/AAPL/);
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
  assert.match(await page.locator('#marketStatus').innerText(),/Market research loaded/);
- console.log('RUNLU INVEST browser flow passed: add holding, save memory, reload, market');
+ // Exercise the actual browser export and file-input import paths.
+ page.once('dialog',dialog=>dialog.accept());
+ const downloadPromise=page.waitForEvent('download');
+ await page.locator('#exportBackup').click();
+ const download=await downloadPromise;
+ const backupPath=await download.path();
+ assert.ok(backupPath,'backup should download as a file');
+ await page.evaluate(()=>localStorage.removeItem('runlu-invest-v01'));
+ await page.reload();
+ assert.doesNotMatch(await page.locator('#holdingTitle').innerText(),/AAPL/);
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('#backupFile').setInputFiles(backupPath);
+ await page.locator('#holdingTitle').getByText('Apple Inc. · AAPL').waitFor();
+ assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
+ await page.reload();
+ assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
+ console.log('RUNLU INVEST browser flow passed: holding, memory, reload, market, backup export/import');
 }finally{await browser.close()}
