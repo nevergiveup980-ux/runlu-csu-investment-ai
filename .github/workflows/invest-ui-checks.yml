@@ -16,5 +16,7 @@ jobs:
       - run: node scripts/invest-ui-smoke.mjs
       - run: node --check scripts/invest-persistence-test.mjs
       - run: node scripts/invest-persistence-test.mjs
+      - run: node --check scripts/invest-backup-validation-test.mjs
+      - run: node scripts/invest-backup-validation-test.mjs
       - run: npm install
       - run: npm run typecheck
