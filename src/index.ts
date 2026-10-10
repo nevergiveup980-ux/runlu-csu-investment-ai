@@ -1,6 +1,7 @@
 import { botStatus, buildBotDecision, type BotPortfolioState, type OpenOrder } from "./csu-bot-v2";
 import { createPaperLedger, simulateDecision } from "./paper-trader";
 import { accountDiagnostics, toBotPortfolio, validateSnapshot, type BrokerAccountSnapshot } from "./broker-bridge";
+import { createTradeProposal } from "./trade-proposal";
 
 type Candle = {
   datetime: string;
@@ -341,6 +342,41 @@ export default {
             liveTradingEnabled: false,
           },
           notice: "Account-aware simulation only. No real broker order is sent.",
+        }), { status: 200, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+      }
+
+      if (url.pathname === "/api/bot/trade-proposal" && request.method === "POST") {
+        const secret = (env as Env & { CSU_SNAPSHOT_TOKEN?: string }).CSU_SNAPSHOT_TOKEN;
+        if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
+          return new Response(JSON.stringify({ error: "Private trade proposal unavailable" }), {
+            status: 403,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+        let body: { snapshot: BrokerAccountSnapshot; limitPriceCAD: number; expiresAt: string };
+        try {
+          body = await request.json() as typeof body;
+        } catch {
+          return json({ error: "Invalid proposal request JSON" }, 400, "no-store");
+        }
+        const validation = validateSnapshot(body.snapshot);
+        if (!validation.valid) return json({ error: "Broker snapshot failed safety validation", validation }, 422, "no-store");
+        const portfolio = toBotPortfolio(body.snapshot);
+        const candles = await yahooDaily();
+        if (!candles.length) return json({ error: "No market data returned" }, 404, "no-store");
+        const ind = indicators(candles);
+        const decision = buildBotDecision(ind, portfolio);
+        const proposal = createTradeProposal(decision, portfolio, Number(body.limitPriceCAD), body.expiresAt);
+        return new Response(JSON.stringify({
+          symbol: "CSU.TO",
+          mode: "HUMAN_REVIEW_REQUIRED",
+          validation,
+          decision,
+          proposal,
+          brokerSubmitted: false,
+          notice: proposal
+            ? "Proposal created for human review. No brokerage order has been submitted."
+            : "No executable proposal was created. No brokerage order has been submitted.",
         }), { status: 200, headers: { "content-type": "application/json", "cache-control": "no-store" } });
       }
 
