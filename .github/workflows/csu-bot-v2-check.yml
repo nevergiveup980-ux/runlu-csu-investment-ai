@@ -20,3 +20,5 @@ jobs:
           node-version: "22"
       - run: npm install
       - run: npm run typecheck
+      - name: Test read-only SnapTrade handoff
+        run: python -m unittest discover -s bridge -p "test_*.py"
