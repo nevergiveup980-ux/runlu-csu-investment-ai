@@ -1,4 +1,5 @@
-import { botStatus, buildBotDecision, type BotPortfolioState } from "./csu-bot-v2";
+import { botStatus, buildBotDecision, type BotPortfolioState, type OpenOrder } from "./csu-bot-v2";
+import { createPaperLedger, simulateDecision } from "./paper-trader";
 
 type Candle = {
   datetime: string;
@@ -224,22 +225,44 @@ async function twelve(env: Env, interval: string): Promise<Candle[]> {
     .filter((c: Candle) => [c.open, c.high, c.low, c.close].every(Number.isFinite));
 }
 
+function parseOpenOrders(url: URL): OpenOrder[] {
+  const raw = url.searchParams.get("openOrders");
+  if (!raw) return [];
+  let value: unknown;
+  try { value = JSON.parse(raw); } catch { throw new Error("openOrders must be valid JSON"); }
+  if (!Array.isArray(value)) throw new Error("openOrders must be a JSON array");
+  return value.map((x: any) => ({
+    id: x.id == null ? undefined : String(x.id),
+    symbol: String(x.symbol || ""),
+    side: ["BUY", "SELL"].includes(String(x.side || "").toUpperCase()) ? String(x.side).toUpperCase() as "BUY" | "SELL" : "UNKNOWN",
+    quantity: Number(x.quantity || 0),
+    limitPrice: x.limitPrice == null ? null : Number(x.limitPrice),
+    status: String(x.status || "OPEN"),
+  }));
+}
+
 function parsePortfolio(url: URL): BotPortfolioState {
   const rawShares = Number(url.searchParams.get("shares") ?? "0");
   const rawCash = url.searchParams.has("cash") ? Number(url.searchParams.get("cash")) : null;
+  const rawBuyingPower = url.searchParams.has("buyingPower") ? Number(url.searchParams.get("buyingPower")) : null;
   const rawAverageCost = url.searchParams.has("averageCost") ? Number(url.searchParams.get("averageCost")) : null;
+  const rawHistoryCount = url.searchParams.has("historyCount") ? Number(url.searchParams.get("historyCount")) : null;
 
-  if (!Number.isInteger(rawShares) || rawShares < 0 || rawShares > 3) {
-    throw new Error("shares must be an integer from 0 to 3");
+  if (!Number.isInteger(rawShares) || rawShares < 0 || rawShares > 3) throw new Error("shares must be an integer from 0 to 3");
+  for (const [name, value] of [["cash", rawCash], ["buyingPower", rawBuyingPower], ["averageCost", rawAverageCost]] as const) {
+    if (value != null && (!Number.isFinite(value) || value < 0)) throw new Error(`${name} must be a non-negative number`);
   }
-  if (rawCash != null && (!Number.isFinite(rawCash) || rawCash < 0)) {
-    throw new Error("cash must be a non-negative number");
-  }
-  if (rawAverageCost != null && (!Number.isFinite(rawAverageCost) || rawAverageCost < 0)) {
-    throw new Error("averageCost must be a non-negative number");
-  }
+  if (rawHistoryCount != null && (!Number.isInteger(rawHistoryCount) || rawHistoryCount < 0)) throw new Error("historyCount must be a non-negative integer");
 
-  return { shares: rawShares, cash: rawCash, averageCost: rawAverageCost };
+  return {
+    shares: rawShares,
+    cash: rawCash,
+    buyingPower: rawBuyingPower,
+    averageCost: rawAverageCost,
+    currency: url.searchParams.get("currency") || "CAD",
+    openOrders: parseOpenOrders(url),
+    historyCount: rawHistoryCount,
+  };
 }
 
 export default {
@@ -259,6 +282,27 @@ export default {
 
       if (url.pathname === "/api/bot/status") {
         return json(botStatus(), 200, "no-store");
+      }
+
+      if (url.pathname === "/api/bot/simulate") {
+        if (request.method !== "GET") return json({ error: "Simulation endpoint is GET-only." }, 405, "no-store");
+        const portfolio = parsePortfolio(url);
+        const candles = await yahooDaily();
+        if (!candles.length) return json({ error: "No market data returned" }, 404, "no-store");
+        const ind = indicators(candles);
+        const decision = buildBotDecision(ind, portfolio);
+        const before = createPaperLedger(portfolio);
+        const after = simulateDecision(before, decision, ind.price);
+        return json({
+          symbol: "CSU.TO",
+          mode: "SIMULATION_ONLY",
+          asOf: candles.at(-1)?.datetime,
+          portfolio,
+          indicators: ind,
+          decision,
+          paper: { before, after },
+          notice: "Read-only simulation. No real order is placed, changed, or cancelled.",
+        }, 200, "no-store");
       }
 
       if (url.pathname === "/api/bot/preview") {
