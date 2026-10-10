@@ -21,7 +21,6 @@ try{
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
  assert.match(await page.locator('#marketStatus').innerText(),/Market research loaded/);
  // Exercise the actual browser export and file-input import paths.
- page.once('dialog',dialog=>dialog.accept());
  const downloadPromise=page.waitForEvent('download');
  await page.locator('#exportBackup').click();
  const download=await downloadPromise;
