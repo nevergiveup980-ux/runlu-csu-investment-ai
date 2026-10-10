@@ -1,5 +1,6 @@
 import { botStatus, buildBotDecision, type BotPortfolioState, type OpenOrder } from "./csu-bot-v2";
 import { createPaperLedger, simulateDecision } from "./paper-trader";
+import { accountDiagnostics, toBotPortfolio, validateSnapshot, type BrokerAccountSnapshot } from "./broker-bridge";
 
 type Candle = {
   datetime: string;
@@ -282,6 +283,54 @@ export default {
 
       if (url.pathname === "/api/bot/status") {
         return json(botStatus(), 200, "no-store");
+      }
+
+      if (url.pathname === "/api/bot/account-preview" && request.method === "POST") {
+        let snapshot: BrokerAccountSnapshot;
+        try {
+          snapshot = await request.json() as BrokerAccountSnapshot;
+        } catch {
+          return json({ error: "Invalid broker snapshot JSON", decision: "HOLD", liveTradingEnabled: false }, 400, "no-store");
+        }
+
+        const validation = validateSnapshot(snapshot);
+        if (!validation.valid) {
+          return json({
+            mode: "READ_ONLY_SIMULATION",
+            decision: "HOLD",
+            reason: "Broker snapshot failed safety validation",
+            validation,
+            liveTradingEnabled: false,
+          }, 422, "no-store");
+        }
+
+        const portfolio = toBotPortfolio(snapshot);
+        const diagnostics = accountDiagnostics(snapshot);
+        const candles = await yahooDaily();
+        if (!candles.length) return json({ error: "No market data returned", decision: "HOLD" }, 404, "no-store");
+        const ind = indicators(candles);
+        const decision = buildBotDecision(ind, portfolio);
+        const before = createPaperLedger(portfolio);
+        const after = simulateDecision(before, decision, ind.price);
+
+        return json({
+          symbol: "CSU.TO",
+          mode: "READ_ONLY_SIMULATION",
+          asOf: candles.at(-1)?.datetime,
+          broker: diagnostics,
+          validation,
+          portfolio,
+          indicators: ind,
+          decision,
+          paper: { before, after },
+          safety: {
+            placeOrder: false,
+            modifyOrder: false,
+            cancelOrder: false,
+            liveTradingEnabled: false,
+          },
+          notice: "Account-aware simulation only. The broker snapshot is consumed read-only and no real order can be sent.",
+        }, 200, "no-store");
       }
 
       if (url.pathname === "/api/bot/simulate") {
