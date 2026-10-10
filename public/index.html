@@ -1,1 +1,161 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RUNLU CSU Investment AI</title><style>:root{font-family:ui-sans-serif,system-ui,-apple-system;color:#161616;background:#f4f5f2}*{box-sizing:border-box}body{margin:0}.wrap{max-width:980px;margin:auto;padding:24px}.brand{font-size:13px;letter-spacing:.14em}.title{font-size:34px;font-weight:650;margin:6px 0}.muted{color:#696b66}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}.card{background:white;border:1px solid #dedfd9;border-radius:18px;padding:16px}.big{font-size:25px;font-weight:650;margin-top:8px}.decision{font-size:30px;font-weight:760;margin-top:6px}.row{display:flex;gap:10px;flex-wrap:wrap}.pill,button{border:1px solid #d2d4cd;background:#fff;border-radius:999px;padding:9px 13px;font:inherit}.active{background:#1f211f;color:#fff}.controls{margin-top:22px}.control-label{font-size:12px;color:#777;margin:10px 0 7px;text-transform:uppercase;letter-spacing:.08em}.chartwrap{height:390px;margin-top:12px;position:relative}.chartwrap canvas{width:100%;height:100%;display:block}.chartempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#777;padding:32px}.foot{font-size:12px;color:#74766f;margin-top:24px}.mini{font-size:13px;line-height:1.55;color:#555;margin-top:8px}.decisionGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.paperGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}@media(max-width:700px){.grid,.paperGrid{grid-template-columns:1fr 1fr}.decisionGrid{grid-template-columns:1fr 1fr}.title{font-size:28px}.chartwrap{height:320px}.decision{font-size:25px}}</style></head><body><div class="wrap"><div class="brand">RUNLU · LONG-TERM TREND RESEARCH</div><div class="title">CSU Investment AI V1.6</div><div class="muted">Constellation Software · TSX: CSU · zero-cost data mode</div><div class="controls"><div class="control-label">View range</div><div class="row" id="ranges"><button data-range="22" class="active">1M</button><button data-range="66">3M</button><button data-range="132">6M</button><button data-range="252">1Y</button></div><div class="control-label">Candle interval</div><div class="row" id="intervals"><button data-interval="1day" class="active">Daily</button><button data-interval="2h">2H</button><button data-interval="1h">1H</button></div></div><div class="grid"><div class="card"><div class="muted">Latest Price</div><div class="big" id="price">—</div></div><div class="card"><div class="muted">RSI 14</div><div class="big" id="rsi">—</div></div><div class="card"><div class="muted">Trend Confidence</div><div class="big" id="confidence">Waiting</div><div class="mini">Agreement among trend signals, not profit probability.</div></div><div class="card"><div class="muted">Entry Quality</div><div class="big" id="entry">—</div></div></div><div class="card"><div class="muted">RUNLU direct recommendation</div><div class="decisionGrid"><div><div class="muted">If not holding now</div><div class="decision" id="buyDecision">WAITING</div></div><div><div class="muted">If already holding</div><div class="decision" id="sellDecision">WAITING</div></div></div><hr style="border:0;border-top:1px solid #eee;margin:18px 0"><div class="grid" style="margin:0"><div><div class="muted">Trend</div><div class="big" id="trend">Loading…</div></div><div><div class="muted">SMA 20 / 50</div><div class="big" id="sma">—</div></div><div><div class="muted">SMA 100 / 200</div><div class="big" id="longsma">—</div></div><div><div class="muted">Data status</div><div class="big">Daily</div></div></div><div class="muted" id="asof">Daily data refresh is scheduled every 2 hours on weekdays</div><hr style="border:0;border-top:1px solid #eee;margin:18px 0"><div id="reasons">Research recommendation pending.</div></div><div class="card" style="margin-top:22px"><div class="muted">Robot Paper Trade validation</div><div class="decision" id="paperStatus">Waiting for first simulated BUY</div><div class="paperGrid"><div><div class="muted">Entry</div><div class="big" id="paperEntry">—</div></div><div><div class="muted">5D</div><div class="big" id="paper5">Pending</div></div><div><div class="muted">10D</div><div class="big" id="paper10">Pending</div></div><div><div class="muted">20D</div><div class="big" id="paper20">Pending</div></div></div><div class="mini" id="paperSummary">This is a simulated trade only. It does not place a real order.</div></div><div class="card" style="margin-top:22px"><div class="muted">CSU price chart</div><div class="big" id="chartTitle">1M · Daily · Candlestick</div><div class="row" id="modes" style="margin-top:12px"><button data-mode="candles" class="active">Candlestick</button><button data-mode="line">Trend Line</button></div><div class="chartwrap"><canvas id="chart"></canvas><div class="chartempty" id="chartEmpty">Waiting for research data…</div></div><div class="muted">SMA 20 · SMA 50 · SMA 100 · SMA 200</div></div><div class="grid"><div class="card"><div class="muted">MACD / Signal</div><div class="big" id="macd">—</div></div><div class="card"><div class="muted">20-day Support</div><div class="big" id="support">—</div></div><div class="card"><div class="muted">20-day Resistance</div><div class="big" id="resistance">—</div></div><div class="card"><div class="muted">How to read it</div><div class="mini">Paper Trade automatically records a simulated BUY signal and checks 5D / 10D / 20D outcomes. No money is moved.</div></div></div><div class="foot">Research assistant only. Direct recommendations and paper trades are technical research outputs, not guaranteed-return predictions or real trades.</div></div><script>let range=22,interval='1day',mode='candles',all=[];const $=x=>document.getElementById(x),fmt=n=>n==null?'—':Number(n).toLocaleString(undefined,{maximumFractionDigits:2}),pct=n=>n==null?'Pending':(n>=0?'+':'')+Number(n).toFixed(2)+'%';function title(){const rr={22:'1M',66:'3M',132:'6M',252:'1Y'}[range],ii={'1day':'Daily','2h':'2H','1h':'1H'}[interval];$('chartTitle').textContent=rr+' · '+ii+' · '+(mode==='candles'?'Candlestick':'Trend Line')}function sma(rows,n){return rows.map((r,i)=>i<n-1?null:rows.slice(i-n+1,i+1).reduce((s,x)=>s+x.close,0)/n)}function draw(){title();const c=$('chart'),b=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=b.width*d;c.height=b.height*d;const g=c.getContext('2d');g.scale(d,d);g.clearRect(0,0,b.width,b.height);const rows=all.slice(-range);$('chartEmpty').style.display=rows.length?'none':'flex';if(!rows.length)return;const p={l:48,r:10,t:15,b:25},w=b.width-p.l-p.r,h=b.height-p.t-p.b,lo0=Math.min(...rows.map(x=>x.low)),hi0=Math.max(...rows.map(x=>x.high)),m=(hi0-lo0)*.07||1,lo=lo0-m,hi=hi0+m,x=i=>p.l+(i+.5)*w/rows.length,y=v=>p.t+(hi-v)*h/(hi-lo);g.font='11px system-ui';for(let k=0;k<5;k++){let yy=p.t+k*h/4;g.strokeStyle='#ecece8';g.beginPath();g.moveTo(p.l,yy);g.lineTo(b.width-p.r,yy);g.stroke();g.fillStyle='#777';g.fillText(Math.round(hi-k*(hi-lo)/4).toLocaleString(),2,yy+4)}if(mode==='line'){g.strokeStyle='#222';g.lineWidth=2;g.beginPath();rows.forEach((r,i)=>i?g.lineTo(x(i),y(r.close)):g.moveTo(x(i),y(r.close)));g.stroke()}else{let cw=Math.max(2,w/rows.length*.55);rows.forEach((r,i)=>{let xx=x(i),up=r.close>=r.open;g.strokeStyle=g.fillStyle=up?'#47765a':'#9a5050';g.beginPath();g.moveTo(xx,y(r.high));g.lineTo(xx,y(r.low));g.stroke();g.fillRect(xx-cw/2,Math.min(y(r.open),y(r.close)),cw,Math.max(1,Math.abs(y(r.open)-y(r.close))))})}[[20,[]],[50,[5,3]],[100,[2,3]],[200,[8,4]]].forEach(([n,dash])=>{let vals=sma(all,n).slice(-rows.length);g.setLineDash(dash);g.strokeStyle='#777';g.lineWidth=n<=50?1.5:1;g.beginPath();let st=false;vals.forEach((v,i)=>{if(v==null)return;st?g.lineTo(x(i),y(v)):(g.moveTo(x(i),y(v)),st=true)});if(st)g.stroke()});g.setLineDash([])}document.querySelectorAll('#ranges button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ranges button').forEach(x=>x.classList.remove('active'));b.classList.add('active');range=+b.dataset.range;draw()});document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;draw()});document.querySelectorAll('#intervals button').forEach(b=>b.onclick=()=>{if(b.dataset.interval!=='1day'){alert('A reliable free CSU intraday feed is still being evaluated. Daily remains active.');return}interval='1day';draw()});async function load(){try{const r=await fetch('./data.json?'+Date.now());if(!r.ok)throw new Error('Research data is not available yet');const d=await r.json(),i=d.indicators||{},a=d.analysis||{},t=(d.paperTrades||[]).at(-1),s=d.paperSummary||{};all=d.candles||[];$('price').textContent='$'+fmt(i.price);$('rsi').textContent=fmt(i.rsi14);$('sma').textContent=fmt(i.sma20)+' / '+fmt(i.sma50);$('longsma').textContent=fmt(i.sma100)+' / '+fmt(i.sma200);$('macd').textContent=fmt(i.macd)+' / '+fmt(i.macdSignal);$('support').textContent='$'+fmt(i.support20);$('resistance').textContent='$'+fmt(i.resistance20);$('trend').textContent=a.trend||'Mixed / Sideways';$('entry').textContent=a.entryQuality||'Neutral';$('buyDecision').textContent=a.buyDecision||'DO NOT BUY';$('sellDecision').textContent=a.sellDecision||'HOLD / REVIEW';$('confidence').textContent=a.trendConfidence||'—';$('asof').textContent='Market data as of '+(d.asOf||'—')+' · refreshed '+new Date(d.updatedAt).toLocaleString();$('reasons').innerHTML=(a.reasons||[]).map(x=>'• '+x).join('<br>');if(t){$('paperStatus').textContent='Simulated BUY · '+t.entryDate;$('paperEntry').textContent='$'+fmt(t.entryPrice);$('paper5').textContent=pct(t.return5d);$('paper10').textContent=pct(t.return10d);$('paper20').textContent=pct(t.return20d);$('paperSummary').textContent='Completed 20D tests: '+(s.completed||0)+' · 20D win rate: '+(s.winRate20d==null?'Pending':s.winRate20d.toFixed(0)+'%')+' · average 20D return: '+(s.avgReturn20d==null?'Pending':pct(s.avgReturn20d))}draw()}catch(e){$('trend').textContent='Waiting for data';$('reasons').textContent=e.message;draw()}}window.addEventListener('resize',draw);load();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RUNLU INVEST</title>
+<style>
+:root{font-family:ui-sans-serif,system-ui,-apple-system;color:#171817;background:#f3f4f0}*{box-sizing:border-box}body{margin:0}.wrap{max-width:980px;margin:auto;padding:22px}.brand{font-size:12px;letter-spacing:.16em}.title{font-size:36px;font-weight:720;margin:6px 0}.muted{color:#6d7069}.hero,.card{background:#fff;border:1px solid #dedfd9;border-radius:20px;padding:18px}.hero{margin-top:18px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}.holdings{display:grid;gap:10px}.holding{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid #e3e4de;border-radius:16px;cursor:pointer}.holding.active{border-color:#252725}.symbol{font-size:21px;font-weight:700}.big{font-size:25px;font-weight:680;margin-top:5px}.row{display:flex;gap:9px;flex-wrap:wrap}.pill,button,input,select,textarea{font:inherit;border:1px solid #d3d5ce;border-radius:12px;background:#fff;padding:10px 12px}button{cursor:pointer}.primary{background:#20221f;color:#fff}.section{margin-top:20px}.memory{border-top:1px solid #ecece7;padding:13px 0}.memory:first-child{border-top:0}.memoryHead{display:flex;justify-content:space-between;gap:10px}.tag{font-size:11px;border:1px solid #d9dbd4;border-radius:999px;padding:4px 8px}.form{display:grid;grid-template-columns:130px 1fr;gap:9px;margin-top:14px}.form textarea{grid-column:1/-1;min-height:76px;resize:vertical}.form button{grid-column:1/-1}.safe{font-size:12px;margin-top:8px}.chart{height:130px;display:flex;align-items:center;justify-content:center;border:1px dashed #d8dad3;border-radius:15px;margin-top:12px;color:#777}@media(max-width:700px){.grid{grid-template-columns:1fr}.title{font-size:31px}.form{grid-template-columns:1fr}.form textarea,.form button{grid-column:auto}}
+</style>
+</head>
+<body><div class="wrap">
+<div class="brand">RUNLU · PRIVATE INVESTMENT MEMORY</div>
+<div class="title">RUNLU INVEST</div>
+<div class="muted">The investment companion that remembers.</div>
+<div class="hero">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <div><div class="muted">Portfolio</div><div class="big">My Investments</div></div>
+    <span class="tag">READ-ONLY · NO TRADING</span>
+  </div>
+  <div class="grid">
+    <div><div class="muted">Holdings</div><div class="big" id="holdingCount">—</div></div>
+    <div><div class="muted">Selected</div><div class="big" id="selectedSymbol">—</div></div>
+    <div><div class="muted">Memory points</div><div class="big" id="memoryCount">0</div></div>
+  </div>
+</div>
+
+<div class="card section">
+ <div class="muted">Holdings</div>
+ <div class="holdings" id="holdings"></div>
+ <div class="form">
+   <input id="newSymbol" placeholder="Symbol e.g. AAPL">
+   <input id="newName" placeholder="Company / fund name">
+   <button class="primary" id="addHolding">Add holding</button>
+ </div>
+</div>
+
+<div class="card section">
+ <div class="muted">Holding Companion</div>
+ <div class="big" id="holdingTitle">Choose a holding</div>
+ <div class="grid">
+  <div><div class="muted">Latest price</div><div class="big" id="price">—</div></div>
+  <div><div class="muted">RSI 14</div><div class="big" id="rsi">—</div></div>
+  <div><div class="muted">Research stance</div><div class="big" id="stance">—</div></div>
+ </div>
+ <div class="chart" id="marketStatus">Choose a holding to load market research.</div>
+</div>
+
+<div class="card section">
+ <div class="muted">Investment Memory</div>
+ <div class="big">Why did I make this decision?</div>
+ <div class="form">
+  <select id="action"><option>BUY</option><option>ADD</option><option>REDUCE</option><option>SELL</option><option>NOTE</option><option>REVIEW</option></select>
+  <input id="memoryPrice" inputmode="decimal" placeholder="Price (optional)">
+  <textarea id="reason" placeholder="Why? What did you believe or notice at the time?"></textarea>
+  <textarea id="expectation" placeholder="What do you expect to happen next? (optional)"></textarea>
+  <button class="primary" id="saveMemory">Save memory point</button>
+ </div>
+ <div class="safe muted">Stored locally on this device in V0.1. It does not send or place an order.</div>
+ <div class="grid" style="margin-top:14px">
+  <div><div class="muted">Decisions</div><div class="big" id="decisionCount">0</div></div>
+  <div><div class="muted">Reviewed</div><div class="big" id="reviewedCount">0</div></div>
+  <div><div class="muted">Positive outcomes</div><div class="big" id="positiveCount">0</div></div>
+ </div>
+ <div id="timeline" style="margin-top:14px"></div>
+</div>
+<div class="card section"><div class="muted">Memory Backup</div><div class="row" style="margin-top:12px"><button id="exportBackup">Export JSON backup</button><button id="importBackup">Import JSON backup</button><input id="backupFile" type="file" accept="application/json,.json" hidden></div><div class="safe muted">Backup files contain your investment notes. Keep them private. Import replaces local portfolio data only after confirmation.</div></div>
+<div class="card section"><div class="muted">Holding Story</div><div class="big" id="storyTitle">Your investment story</div><div id="story" class="mini"></div></div>
+<div class="card section">
+ <div class="muted">What have I learned?</div>
+ <div class="big" id="lessonTitle">Your pattern will appear here.</div>
+ <div id="lessons" class="mini" style="margin-top:10px">Review a few decisions and RUNLU INVEST will summarize your own investing behavior locally on this device.</div>
+</div>
+</div>
+<script>
+const KEY='runlu-invest-v01';
+const seed={holdings:[{id:'csu',symbol:'CSU.TO',name:'Constellation Software'}],selected:'csu',memories:[]};
+let state;
+try{state=JSON.parse(localStorage.getItem(KEY))||seed}catch{state=seed}
+const $=id=>document.getElementById(id);
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){alert('Could not save locally. Your changes were not saved; check available storage.');return false}};
+const selected=()=>state.holdings.find(h=>h.id===state.selected);
+function render(){
+ $('holdingCount').textContent=state.holdings.length;
+ const h=selected(); $('selectedSymbol').textContent=h?.symbol||'—';
+ const mem=state.memories.filter(m=>m.holdingId===state.selected); $('memoryCount').textContent=mem.length;
+ const decisions=mem.filter(m=>['BUY','ADD','REDUCE','SELL'].includes(m.action));
+ const reviewed=mem.filter(m=>m.outcome&&m.outcome!=='PENDING');
+ $('decisionCount').textContent=decisions.length;
+ $('reviewedCount').textContent=reviewed.length;
+ $('positiveCount').textContent=reviewed.filter(m=>m.outcome==='POSITIVE').length;
+ renderLessons(mem,reviewed);renderStory(h,mem);
+ $('holdings').innerHTML=state.holdings.map(x=>'<div class="holding '+(x.id===state.selected?'active':'')+'" data-id="'+x.id+'"><div><div class="symbol">'+escapeHtml(x.symbol)+'</div><div class="muted">'+escapeHtml(x.name||'Holding')+'</div></div><span>›</span></div>').join('');
+ document.querySelectorAll('.holding').forEach(x=>x.onclick=()=>{const previousSelected=state.selected;state.selected=x.dataset.id;if(!save()){state.selected=previousSelected;return;}render();loadMarket()});
+ $('holdingTitle').textContent=h?(h.name||h.symbol)+' · '+h.symbol:'Choose a holding';
+ $('timeline').innerHTML=mem.length?mem.slice().reverse().map(m=>'<div class="memory"><div class="memoryHead"><strong>'+escapeHtml(m.action)+(m.price?' · '+escapeHtml(m.price):'')+'</strong><span class="muted">'+new Date(m.occurredAt).toLocaleString()+'</span></div><div style="margin-top:7px">'+escapeHtml(m.reason||'No reason recorded.')+'</div>'+(m.expectation?'<div class="mini"><strong>Expected:</strong> '+escapeHtml(m.expectation)+'</div>':'')+'<div class="row" style="margin-top:9px"><span class="tag">Outcome: '+escapeHtml(m.outcome||'PENDING')+'</span>'+(m.outcomeNote?'<span class="muted">'+escapeHtml(m.outcomeNote)+'</span>':'')+'<button data-review="'+escapeHtml(m.id)+'" style="padding:5px 9px">Review</button></div></div>').join(''):'<div class="muted">No memory yet. Your investment story starts with the first decision you record.</div>';
+ document.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>reviewMemory(b.dataset.review));
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderStory(h,mem){
+ const title=$('storyTitle'),box=$('story');
+ title.textContent=h?(h.name||h.symbol)+' · My Story':'Your investment story';
+ if(!mem.length){box.textContent='No decisions recorded yet. Your story begins with your first memory.';return}
+ const sorted=[...mem].sort((a,b)=>a.occurredAt.localeCompare(b.occurredAt));
+ const lines=sorted.map((m,i)=>{
+ const date=new Date(m.occurredAt).toLocaleDateString();
+ const price=m.price?' at '+m.price:'';
+ const expectation=m.expectation?' Expected: '+m.expectation:'';
+ const result=m.outcome&&m.outcome!=='PENDING'?' Outcome: '+m.outcome+(m.outcomeNote?' — '+m.outcomeNote:''):' Awaiting review.';
+ return (i+1)+'. '+date+' · '+m.action+price+'. '+(m.reason||'')+expectation+result;
+ });
+ box.innerHTML=lines.map(x=>'<div class="memory">'+escapeHtml(x)+'</div>').join('');
+}
+function renderLessons(mem,reviewed){
+ const title=$('lessonTitle'),box=$('lessons');
+ if(!mem.length){title.textContent='Your pattern will appear here.';box.textContent='Start with one decision memory.';return}
+ if(!reviewed.length){title.textContent='Memory is building.';box.textContent='You have '+mem.length+' memory point'+(mem.length===1?'':'s')+'. Review outcomes to turn history into lessons.';return}
+ const pos=reviewed.filter(m=>m.outcome==='POSITIVE').length,neg=reviewed.filter(m=>m.outcome==='NEGATIVE').length,mix=reviewed.filter(m=>m.outcome==='MIXED').length;
+ const actions={};mem.forEach(m=>actions[m.action]=(actions[m.action]||0)+1);
+ const topAction=Object.entries(actions).sort((a,b)=>b[1]-a[1])[0];
+ const stop=new Set(['the','and','that','this','with','from','have','what','when','then','because','into','your','about','after','before','were','was','are','for','but','not','you','its','too','very','just']);
+ const words={};mem.forEach(m=>(m.reason||'').toLowerCase().match(/[a-z]{4,}/g)?.forEach(w=>{if(!stop.has(w))words[w]=(words[w]||0)+1}));
+ const themes=Object.entries(words).sort((a,b)=>b[1]-a[1]).slice(0,3).filter(x=>x[1]>1).map(x=>x[0]);
+ title.textContent=pos>neg?'Reviewed decisions lean positive.':neg>pos?'Reviewed decisions need a closer look.':'Reviewed decisions are mixed.';
+ const lines=['Reviewed outcomes: '+pos+' positive · '+mix+' mixed · '+neg+' negative.'];
+ if(topAction)lines.push('Most recorded action: '+topAction[0]+' ('+topAction[1]+').');
+ if(themes.length)lines.push('Recurring words in your reasons: '+themes.join(', ')+'.');
+ lines.push('This is a reflection of your own records, not investment advice or a prediction.');
+ box.innerHTML=lines.map(x=>'• '+escapeHtml(x)).join('<br>');
+}
+async function loadMarket(){
+ const h=selected();if(!h)return;
+ $('marketStatus').textContent='Loading '+h.symbol+' research…';
+ $('price').textContent=$('rsi').textContent=$('stance').textContent='—';
+ try{
+  const r=await fetch('/api/market?symbol='+encodeURIComponent(h.symbol));
+  if(!r.ok)throw new Error('Market data unavailable (HTTP '+r.status+'). Your saved notes are safe.');
+  const d=await r.json();
+  const price=Number(d?.indicators?.price);
+  if(!d?.indicators||!d?.analysis||!Number.isFinite(price))throw new Error('Market response incomplete; your saved notes are safe.');
+  $('price').textContent='$'+price.toLocaleString(undefined,{maximumFractionDigits:2});
+  const rsi=Number(d.indicators.rsi14);
+  $('rsi').textContent=d.indicators.rsi14==null||!Number.isFinite(rsi)?'—':rsi.toFixed(1);
+  $('stance').textContent=d.analysis.stance||'—';
+  $('marketStatus').textContent='Market research loaded · '+(d.asOf||'latest available')+' · read-only';
+ }catch(e){$('marketStatus').textContent=e instanceof Error?e.message:'Market data unavailable; your saved notes are safe.'}
+}
+
+$('addHolding').onclick=()=>{const symbol=$('newSymbol').value.trim().toUpperCase();if(!/^[A-Z0-9.^=-]{1,20}$/.test(symbol))return alert('Enter a valid market symbol.');if(state.holdings.some(h=>h.symbol===symbol))return alert('That holding is already in your portfolio.');const previousSelected=state.selected;const id='h-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);state.holdings.push({id,symbol,name:$('newName').value.trim()||symbol});state.selected=id;if(!save()){state.holdings.pop();state.selected=previousSelected;return;}$('newSymbol').value='';$('newName').value='';render();loadMarket()};
+function reviewMemory(id){const m=state.memories.find(x=>x.id===id);if(!m)return;const result=prompt('Outcome? Enter POSITIVE, MIXED, NEGATIVE, or PENDING',m.outcome||'PENDING');if(result===null)return;const outcome=result.trim().toUpperCase();if(!['POSITIVE','MIXED','NEGATIVE','PENDING'].includes(outcome))return alert('Use POSITIVE, MIXED, NEGATIVE, or PENDING.');const note=prompt('What actually happened? What did you learn?',m.outcomeNote||'');if(note===null)return;const previousReview={outcome:m.outcome,outcomeNote:m.outcomeNote,reviewedAt:m.reviewedAt};m.outcome=outcome;m.outcomeNote=note.trim();m.reviewedAt=new Date().toISOString();if(!save()){Object.assign(m,previousReview);return;}render()}
+$('saveMemory').onclick=()=>{const h=selected();if(!h)return alert('Choose a holding first.');const reason=$('reason').value.trim();if(!reason)return alert('Write the reason you want to remember.');if(reason.length>10000||$('expectation').value.length>10000)return alert('Memory text is too long.');state.memories.push({id:'m-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),holdingId:h.id,occurredAt:new Date().toISOString(),action:$('action').value,price:$('memoryPrice').value.trim()||null,reason,expectation:$('expectation').value.trim(),outcome:'PENDING'});if(!save()){state.memories.pop();return;}$('reason').value='';$('expectation').value='';$('memoryPrice').value='';render()};
+$('exportBackup').onclick=()=>{const payload={format:'runlu-invest-backup',version:1,exportedAt:new Date().toISOString(),data:state};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='runlu-invest-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+$('importBackup').onclick=()=>$('backupFile').click();
+$('backupFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>2000000)throw Error('Backup exceeds 2 MB');const payload=JSON.parse(await file.text());if(payload.format!=='runlu-invest-backup'||payload.version!==1)throw Error('Unsupported backup format');const data=payload.data;if(!data||!Array.isArray(data.holdings)||!Array.isArray(data.memories)||typeof data.selected!=='string'||data.holdings.length>1000||data.memories.length>10000)throw Error('Invalid backup structure');
+ const ids=new Set(),memoryIds=new Set(),actions=new Set(['BUY','ADD','REDUCE','SELL','NOTE','REVIEW']),outcomes=new Set(['PENDING','POSITIVE','MIXED','NEGATIVE']);
+ for(const h of data.holdings){if(!h||typeof h.id!=='string'||!(h.id==='csu'||/^h-[A-Za-z0-9-]{1,70}$/.test(h.id))||ids.has(h.id)||typeof h.symbol!=='string'||!/^[A-Z0-9.^=-]{1,20}$/.test(h.symbol)||typeof h.name!=='string'||h.name.length>200)throw Error('Invalid or duplicate holding');ids.add(h.id)}
+ if(data.holdings.length&&!ids.has(data.selected))throw Error('Selected holding is missing');if(new Set(data.holdings.map(h=>h.symbol)).size!==data.holdings.length)throw Error('Duplicate holding symbols');
+ for(const m of data.memories){if(!m||typeof m.id!=='string'||!/^m-[A-Za-z0-9-]{1,70}$/.test(m.id)||memoryIds.has(m.id)||!ids.has(m.holdingId)||typeof m.occurredAt!=='string'||!Number.isFinite(Date.parse(m.occurredAt))||(m.reviewedAt!=null&&(typeof m.reviewedAt!=='string'||!Number.isFinite(Date.parse(m.reviewedAt))))||!actions.has(m.action)||typeof m.reason!=='string'||!m.reason.trim()||m.reason.length>10000||(m.expectation!=null&&(typeof m.expectation!=='string'||m.expectation.length>10000))||(m.outcome!=null&&!outcomes.has(m.outcome))||(m.outcomeNote!=null&&(typeof m.outcomeNote!=='string'||m.outcomeNote.length>10000))||(m.price!=null&&(typeof m.price!=='string'||m.price.length>60||!/^[0-9., +$-]*$/.test(m.price))))throw Error('Invalid or duplicate memory');memoryIds.add(m.id)}
+ if(data.holdings.length===0&&data.selected!=='')throw Error('Invalid empty portfolio selection');if(!confirm('Replace local RUNLU INVEST data with this backup? Export your current data first if needed.'))return;
+ const previous=localStorage.getItem(KEY);
+ try{localStorage.setItem(KEY,JSON.stringify(data));const verified=JSON.parse(localStorage.getItem(KEY));if(JSON.stringify(verified)!==JSON.stringify(data))throw Error('Restore verification failed');state=verified;render();loadMarket();alert('Backup restored and verified on this device.')}catch(writeError){try{if(previous===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,previous)}catch(rollbackError){throw Error('Restore failed and previous backup could not be rewritten. Do not close this tab; export your current data if possible.')}throw writeError}}catch(err){alert('Import failed: '+err.message)}finally{e.target.value=''}};
+render();loadMarket();
+</script></body></html>

@@ -1,0 +1,20 @@
+name: RUNLU INVEST UI checks
+on:
+  push:
+    branches: [runlu-invest-v0.1]
+  pull_request:
+    branches: [main]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check scripts/invest-ui-smoke.mjs
+      - run: node scripts/invest-ui-smoke.mjs
+      - run: node --check scripts/invest-persistence-test.mjs
+      - run: node scripts/invest-persistence-test.mjs
+      - run: npm install
+      - run: npm run typecheck

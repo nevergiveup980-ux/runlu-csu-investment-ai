@@ -1,0 +1,25 @@
+import {readFileSync} from 'node:fs';
+import {Script,runInNewContext} from 'node:vm';
+import assert from 'node:assert/strict';
+
+const html=readFileSync('public/index.html','utf8');
+const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+assert.equal(inline.length,1,'one inline app script expected');
+const source=inline[0][1];
+const start=source.indexOf('const save=()=>');
+const end=source.indexOf('\nconst selected=',start);
+assert.ok(start>=0&&end>start,'save function must be extractable');
+const saveCode=source.slice(start,end);
+new Script(saveCode,{filename:'invest-save.js'});
+const state={holdings:[{id:'csu',symbol:'CSU.TO',name:'Constellation Software'}],selected:'csu',memories:[]};
+const written=new Map(),alerts=[];
+const storage={setItem(k,v){written.set(k,v)}};
+const save=runInNewContext(saveCode+'\nsave',{state,KEY:'test-runlu',localStorage:storage,alert:m=>alerts.push(m)});
+assert.equal(save(),true,'successful storage write must report success');
+assert.deepEqual(JSON.parse(written.get('test-runlu')),state,'saved state must match');
+storage.setItem=()=>{throw new Error('quota exceeded')};
+assert.equal(save(),false,'failed storage write must report failure');
+assert.equal(alerts.length,1,'storage failure must warn user');
+assert.match(alerts[0],/not saved/i,'failure warning must not claim success');
+assert.deepEqual(JSON.parse(written.get('test-runlu')),state,'failure must not corrupt previous saved data');
+console.log('RUNLU INVEST persistence behavior tests passed');
