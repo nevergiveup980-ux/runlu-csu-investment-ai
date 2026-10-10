@@ -27,3 +27,17 @@ jobs:
           python3 -m http.server 4173 --directory public > /tmp/invest-http.log 2>&1 &
           node scripts/invest-browser-test.mjs
           INVEST_BROWSER=webkit node scripts/invest-browser-test.mjs
+      - name: Package isolated privacy-safe preview
+        run: |
+          mkdir -p invest-preview
+          cp public/index.html invest-preview/index.html
+          test "$(find invest-preview -type f | wc -l)" -eq 1
+          test ! -e invest-preview/portfolio.json
+          test ! -e invest-preview/data.json
+      - name: Upload RUNLU INVEST preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: runlu-invest-safe-preview
+          path: invest-preview/index.html
+          if-no-files-found: error
+          retention-days: 14
