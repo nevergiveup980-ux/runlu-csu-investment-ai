@@ -11,6 +11,7 @@
 <div class="brand">RUNLU · PRIVATE INVESTMENT MEMORY</div>
 <div class="title">RUNLU INVEST</div>
 <div class="muted">The investment companion that remembers.</div>
+<div id="previewNotice" class="safe" role="status" style="display:none;padding:12px;margin-top:14px;border:1px solid #dedfd9;border-radius:12px;background:#fff">Preview mode · Investment notes stay in this browser. Live market prices are not connected on this preview site. Export a JSON backup before clearing browser data.</div>
 <div class="hero">
   <div class="row" style="justify-content:space-between;align-items:center">
     <div><div class="muted">Portfolio</div><div class="big">My Investments</div></div>
@@ -71,6 +72,8 @@
 </div>
 </div>
 <script>
+const STATIC_PREVIEW=location.hostname.endsWith('.github.io');
+if(STATIC_PREVIEW)document.getElementById('previewNotice').style.display='block';
 const KEY='runlu-invest-v01';
 const seed={holdings:[{id:'csu',symbol:'CSU.TO',name:'Constellation Software'}],selected:'csu',memories:[]};
 let state;
@@ -128,6 +131,7 @@ function renderLessons(mem,reviewed){
 }
 async function loadMarket(){
  const h=selected();if(!h)return;
+ if(STATIC_PREVIEW){$('price').textContent=$('rsi').textContent=$('stance').textContent='—';$('marketStatus').textContent='Preview mode · live market data is not connected. Your local investment notes still work.';return;}
  $('marketStatus').textContent='Loading '+h.symbol+' research…';
  $('price').textContent=$('rsi').textContent=$('stance').textContent='—';
  try{
