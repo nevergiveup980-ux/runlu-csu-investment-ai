@@ -88,3 +88,33 @@ export function accountDiagnostics(snapshot: BrokerAccountSnapshot) {
 export function assertBrokerWriteDisabled(action: string): never {
   throw new Error(`Broker write blocked by CSU Bot V2 safety boundary: ${action}`);
 }
+
+
+export function validateSnapshot(snapshot: BrokerAccountSnapshot, maxAgeMinutes = 15) {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!snapshot || typeof snapshot !== "object") errors.push("Broker snapshot is missing");
+  if (!snapshot.provider) errors.push("Broker provider is missing");
+  if (!Array.isArray(snapshot.positions)) errors.push("Positions must be an array");
+  if (snapshot.cash != null && (!Number.isFinite(snapshot.cash) || snapshot.cash < 0)) errors.push("Cash is invalid");
+  if (snapshot.buyingPower != null && (!Number.isFinite(snapshot.buyingPower) || snapshot.buyingPower < 0)) errors.push("Buying power is invalid");
+
+  const fetched = Date.parse(snapshot.fetchedAt || "");
+  const ageMinutes = Number.isFinite(fetched) ? (Date.now() - fetched) / 60000 : Infinity;
+  if (!Number.isFinite(fetched)) errors.push("Snapshot timestamp is invalid");
+  else if (ageMinutes < -5) errors.push("Snapshot timestamp is unexpectedly in the future");
+  else if (ageMinutes > maxAgeMinutes) errors.push(`Broker snapshot is stale (${Math.round(ageMinutes)} minutes old)`);
+
+  const csuOrders = snapshot.openOrders || [];
+  for (const order of csuOrders) {
+    if (!order.symbol || !Number.isFinite(order.quantity) || order.quantity <= 0) errors.push("Open order contains invalid symbol or quantity");
+    if (order.side === "BUY" && order.limitPrice != null && (!Number.isFinite(order.limitPrice) || order.limitPrice <= 0)) errors.push("Open BUY limit price is invalid");
+  }
+
+  if (snapshot.cash != null && snapshot.buyingPower != null && snapshot.buyingPower > snapshot.cash) {
+    warnings.push("Buying power exceeds cash; verify whether broker margin or unsettled-funds semantics are involved");
+  }
+
+  return { valid: errors.length === 0, errors, warnings, ageMinutes: Number.isFinite(ageMinutes) ? ageMinutes : null };
+}
