@@ -8,6 +8,17 @@ try{
  const page=await browser.newPage(process.env.INVEST_BROWSER==='webkit'?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{ });
  await page.route('**/api/market?**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({indicators:{price:2500,rsi14:48},analysis:{stance:'NEUTRAL'},asOf:'2026-10-10'})}));
  await page.goto('http://127.0.0.1:4173/');
+ // GitHub Pages is a static, local-only preview; verify its banner and quote guard.
+ const preview=await browser.newPage();
+ await preview.route('https://runlu-preview.github.io/**',async route=>{
+   const response=await preview.request.get('http://127.0.0.1:4173/');
+   await route.fulfill({response});
+ });
+ await preview.goto('https://runlu-preview.github.io/');
+ await preview.locator('#previewNotice').waitFor({state:'visible'});
+ assert.match(await preview.locator('#marketStatus').innerText(),/Preview mode/);
+ assert.equal(await preview.locator('#price').innerText(),'—');
+ await preview.close();
  await page.locator('#newSymbol').fill('AAPL');
  await page.locator('#newName').fill('Apple Inc.');
  await page.locator('#addHolding').click();
