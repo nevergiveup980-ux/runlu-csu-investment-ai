@@ -271,6 +271,17 @@ export default {
     const url = new URL(request.url);
 
     try {
+      // Private account snapshots must never be accepted by the public preview
+      // endpoint without a separately configured server-side bearer secret.
+      if (url.pathname === "/api/bot/account-preview") {
+        const secret = (env as Env & { CSU_SNAPSHOT_TOKEN?: string }).CSU_SNAPSHOT_TOKEN;
+        if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
+          return new Response(JSON.stringify({ error: "Private account preview unavailable" }), {
+            status: 403,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+      }
       if (url.pathname === "/api/health") {
         return json({
           ok: true,
@@ -313,7 +324,7 @@ export default {
         const before = createPaperLedger(portfolio);
         const after = simulateDecision(before, decision, ind.price);
 
-        return json({
+        return new Response(JSON.stringify({
           symbol: "CSU.TO",
           mode: "READ_ONLY_SIMULATION",
           asOf: candles.at(-1)?.datetime,
@@ -329,8 +340,8 @@ export default {
             cancelOrder: false,
             liveTradingEnabled: false,
           },
-          notice: "Account-aware simulation only. The broker snapshot is consumed read-only and no real order can be sent.",
-        }, 200, "no-store");
+          notice: "Account-aware simulation only. No real broker order is sent.",
+        }), { status: 200, headers: { "content-type": "application/json", "cache-control": "no-store" } });
       }
 
       if (url.pathname === "/api/bot/simulate") {
