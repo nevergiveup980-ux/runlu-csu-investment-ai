@@ -1,0 +1,37 @@
+name: RUNLU INVEST isolated Pages preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [runlu-invest-v0.1]
+    paths:
+      - public/index.html
+      - .github/workflows/invest-preview-pages.yml
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: runlu-invest-pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create strictly isolated preview
+        run: |
+          mkdir -p _invest_pages
+          cp public/index.html _invest_pages/index.html
+          printf '%s\n' 'User data is stored in this browser only. Live market data may be unavailable in this static preview.' > _invest_pages/README.txt
+          test "$(find _invest_pages -type f | wc -l)" -eq 2
+          test ! -e _invest_pages/portfolio.json
+          test ! -e _invest_pages/data.json
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _invest_pages
+      - id: deployment
+        uses: actions/deploy-pages@v4
