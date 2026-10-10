@@ -1,0 +1,22 @@
+name: CSU Bot V2 Check
+
+on:
+  push:
+    branches:
+      - csu-bot-v2-experimental
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run typecheck
