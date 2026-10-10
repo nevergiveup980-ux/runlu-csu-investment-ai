@@ -35,5 +35,17 @@ try{
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
  await page.reload();
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
- console.log('RUNLU INVEST browser flow passed: holding, memory, reload, market, backup export/import');
+ // Invalid import must not overwrite an existing portfolio or memory.
+ const before=await page.evaluate(()=>localStorage.getItem('runlu-invest-v01'));
+ const invalid=JSON.stringify({format:'runlu-invest-backup',version:1,data:{holdings:[{id:'csu',symbol:'CSU.TO',name:'CSU'}],selected:'csu',memories:[{id:'m-bad',holdingId:'csu',occurredAt:'invalid-date',action:'BUY',reason:'broken'}]}});
+ const rejected=page.waitForEvent('dialog');
+ await page.locator('#backupFile').setInputFiles({name:'invalid-backup.json',mimeType:'application/json',buffer:Buffer.from(invalid)});
+ const errorDialog=await rejected;
+ assert.match(errorDialog.message(),/Import failed:/);
+ await errorDialog.accept();
+ const after=await page.evaluate(()=>localStorage.getItem('runlu-invest-v01'));
+ assert.equal(after,before,'invalid backup must preserve existing local data');
+ assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
+
+ console.log('RUNLU INVEST browser flow passed: holding, memory, reload, market, backup export/import and invalid backup protection');
 }finally{await browser.close()}
