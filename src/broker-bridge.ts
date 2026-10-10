@@ -94,9 +94,15 @@ export function validateSnapshot(snapshot: BrokerAccountSnapshot, maxAgeMinutes 
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (!snapshot || typeof snapshot !== "object") errors.push("Broker snapshot is missing");
+  if (!snapshot || typeof snapshot !== "object") {
+    return { valid: false, errors: ["Broker snapshot is missing"], warnings, ageMinutes: null };
+  }
   if (!snapshot.provider) errors.push("Broker provider is missing");
   if (!Array.isArray(snapshot.positions)) errors.push("Positions must be an array");
+  if (!Array.isArray(snapshot.openOrders)) errors.push("Open orders must be an array");
+  if (snapshot.cash == null || snapshot.buyingPower == null) errors.push("Cash and buying power are required");
+  if (snapshot.currency !== "CAD") errors.push("CAD cash account required");
+  if (Array.isArray(snapshot.positions) && snapshot.positions.some(p => !p || !Number.isInteger(p.quantity) || p.quantity < 0)) errors.push("Position quantity invalid");
   if (snapshot.cash != null && (!Number.isFinite(snapshot.cash) || snapshot.cash < 0)) errors.push("Cash is invalid");
   if (snapshot.buyingPower != null && (!Number.isFinite(snapshot.buyingPower) || snapshot.buyingPower < 0)) errors.push("Buying power is invalid");
 
@@ -106,7 +112,7 @@ export function validateSnapshot(snapshot: BrokerAccountSnapshot, maxAgeMinutes 
   else if (ageMinutes < -5) errors.push("Snapshot timestamp is unexpectedly in the future");
   else if (ageMinutes > maxAgeMinutes) errors.push(`Broker snapshot is stale (${Math.round(ageMinutes)} minutes old)`);
 
-  const csuOrders = snapshot.openOrders || [];
+  const csuOrders = Array.isArray(snapshot.openOrders) ? snapshot.openOrders : [];
   for (const order of csuOrders) {
     if (!order.symbol || !Number.isFinite(order.quantity) || order.quantity <= 0) errors.push("Open order contains invalid symbol or quantity");
     if (order.side === "BUY" && order.limitPrice != null && (!Number.isFinite(order.limitPrice) || order.limitPrice <= 0)) errors.push("Open BUY limit price is invalid");
