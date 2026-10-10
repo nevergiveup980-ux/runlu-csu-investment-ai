@@ -11,9 +11,7 @@ Personal API quickstart: https://docs.snaptrade.com/docs/getting-started
   capabilities separately.
 - Personal API keys can trade where enabled. Personal API requests omit
   `userId` and `userSecret`.
-- An existing read-only authorization must be reauthorized with
-  `reconnect=<existing connection ID>` and `connectionType=trade` using the
-  official Generate Connection Portal URL operation, if the user opts in.
+- The trading guide describes requesting trading permissions using `connectionType=trade` and an existing connection ID. The Connection Portal guide describes `reconnect` primarily for disabled connections. Do not automate reauthorization or assume that upgrading an active read-only connection is accepted without verifying the flow with SnapTrade and the account owner.
 - Standard equity order endpoint: `POST /trade/place`; checking impact and
   placing a checked trade are alternative documented operations. These are
   **not implemented** in this branch.
@@ -36,3 +34,9 @@ Personal API quickstart: https://docs.snaptrade.com/docs/getting-started
 - Treat price limit, fees, spread, market hours, cash buffer, and pending orders
   as hard pre-submission checks.
 - Until the above is verified, all execution remains OFF.
+
+## Lifecycle implementation (offline only)
+- `src/order-lifecycle.ts` models PROPOSED -> APPROVED -> SUBMISSION_UNKNOWN -> BROKER_ACCEPTED -> FILLED/CANCELLED/REJECTED.
+- A submission attempt enters SUBMISSION_UNKNOWN before any hypothetical network request; ambiguous outcomes must be reconciled, never blindly retried.
+- `src/order-lifecycle.test.ts` is a regression test source; it must be executed by CI before claiming its checks passed.
+- No endpoint currently performs approval, durable persistence, or broker execution. This is a pure state machine only.
