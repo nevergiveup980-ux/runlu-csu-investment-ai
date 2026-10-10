@@ -14,5 +14,7 @@ jobs:
           node-version: '22'
       - run: node --check scripts/invest-ui-smoke.mjs
       - run: node scripts/invest-ui-smoke.mjs
+      - run: node --check scripts/invest-persistence-test.mjs
+      - run: node scripts/invest-persistence-test.mjs
       - run: npm install
       - run: npm run typecheck
