@@ -27,5 +27,5 @@ const cases=[
  ['invalid price',d=>d.memories[0].price='<script>'],
  ['invalid holding ID',d=>d.holdings[0].id='<bad>'],
 ];
-for(const [label,change] of cases){const d=base();change(d);assert.throws(()=>validate(d),Error,label)}
+for(const [label,change] of cases){const d=base();change(d);assert.throws(()=>validate(d),{name:'Error'},label)}
 console.log('RUNLU INVEST backup validation behavior tests passed ('+(cases.length+1)+' cases)');
