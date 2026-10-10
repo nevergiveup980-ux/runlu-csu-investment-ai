@@ -10,7 +10,7 @@ try{
  await page.locator('#newSymbol').fill('AAPL');
  await page.locator('#newName').fill('Apple Inc.');
  await page.locator('#addHolding').click();
- await page.getByText('Apple Inc.').waitFor();
+ await page.locator('#holdingTitle').getByText('Apple Inc. · AAPL').waitFor();
  assert.match(await page.locator('#selectedSymbol').innerText(),/AAPL/);
  await page.locator('#reason').fill('Testing my investment thesis');
  await page.locator('#expectation').fill('Review in a month');
