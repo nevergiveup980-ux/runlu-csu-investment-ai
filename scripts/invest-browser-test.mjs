@@ -46,6 +46,32 @@ try{
  const after=await page.evaluate(()=>localStorage.getItem('runlu-invest-v01'));
  assert.equal(after,before,'invalid backup must preserve existing local data');
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
+ // Simulate one failed localStorage write during a valid restore.
+ // The app must roll back to the previous saved portfolio.
+ await page.evaluate(()=>{
+   const original=Storage.prototype.setItem;
+   let remaining=1;
+   Storage.prototype.setItem=function(key,value){
+     if(key==='runlu-invest-v01'&&remaining-->0)throw new DOMException('Simulated storage failure','QuotaExceededError');
+     return original.call(this,key,value);
+   };
+   window.__restoreSetItem=()=>{Storage.prototype.setItem=original};
+ });
+ const restoreDialogs=[];
+ const onRestoreDialog=async dialog=>{
+   restoreDialogs.push(dialog.message());
+   await dialog.accept();
+ };
+ page.on('dialog',onRestoreDialog);
+ await page.locator('#backupFile').setInputFiles({name:'valid-restore-with-storage-error.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'runlu-invest-backup',version:1,data:{holdings:[{id:'csu',symbol:'CSU.TO',name:'Constellation Software'}],selected:'csu',memories:[]}}))});
+ await page.waitForFunction(()=>document.querySelector('#backupFile').value==='');
+ page.off('dialog',onRestoreDialog);
+ await page.evaluate(()=>window.__restoreSetItem());
+ assert.ok(restoreDialogs.some(message=>message.includes('Replace local RUNLU INVEST data')),'restore confirmation shown');
+ assert.ok(restoreDialogs.some(message=>message.includes('Import failed:')),'storage failure shown');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('runlu-invest-v01')),before,'failed restore preserves previous backup');
+ await page.reload();
+ assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
 
- console.log('RUNLU INVEST browser flow passed: holding, memory, reload, market, backup export/import and invalid backup protection');
+ console.log('RUNLU INVEST browser flow passed: holding, memory, reload, market, backup export/import and invalid backup and storage failure protection');
 }finally{await browser.close()}
