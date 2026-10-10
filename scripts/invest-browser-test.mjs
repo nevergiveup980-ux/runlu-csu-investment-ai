@@ -1,10 +1,11 @@
 import {readFileSync} from 'node:fs';
-import {chromium} from 'playwright';
+import {chromium,webkit} from 'playwright';
 import assert from 'node:assert/strict';
 
-const browser=await chromium.launch({headless:true});
+const engine=process.env.INVEST_BROWSER==='webkit'?webkit:chromium;
+const browser=await engine.launch({headless:true});
 try{
- const page=await browser.newPage();
+ const page=await browser.newPage(process.env.INVEST_BROWSER==='webkit'?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{ });
  await page.route('**/api/market?**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({indicators:{price:2500,rsi14:48},analysis:{stance:'NEUTRAL'},asOf:'2026-10-10'})}));
  await page.goto('http://127.0.0.1:4173/');
  await page.locator('#newSymbol').fill('AAPL');
@@ -73,5 +74,5 @@ try{
  await page.reload();
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
 
- console.log('RUNLU INVEST browser flow passed: holding, memory, reload, market, backup export/import and invalid backup and storage failure protection');
+ console.log((process.env.INVEST_BROWSER||'chromium')+' RUNLU INVEST browser flow passed: holding, memory, reload, market, backup export/import and invalid backup and storage failure protection');
 }finally{await browser.close()}
