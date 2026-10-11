@@ -303,6 +303,8 @@ export default {
           ok: true,
           product: "RUNLU CSU Investment AI",
           bot: "CSU Bot V2",
+          scout: "RUNLU Scout V1",
+          scoutMode: "DISCOVERY_RESEARCH_ONLY",
           mode: "PAPER_ONLY",
           liveTrading: false,
         }, 200, "no-store");
