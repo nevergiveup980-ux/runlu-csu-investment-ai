@@ -61,13 +61,23 @@ def sanitize_snapshot(raw):
     }
 
 
+def _auth_headers():
+    token = os.getenv("CSU_SNAPSHOT_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("CSU_SNAPSHOT_TOKEN is required for private bot endpoints")
+    return {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+
+
 def forward_snapshot(raw):
     safe = sanitize_snapshot(raw)
     payload = json.dumps(safe).encode("utf-8")
     req = urllib.request.Request(
         BOT_URL,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers=_auth_headers(),
         method="POST",
     )
     try:
