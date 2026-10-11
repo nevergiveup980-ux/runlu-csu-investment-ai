@@ -35,7 +35,7 @@ const base = {
   snapshot,
   quote: { symbol: "CSU.TO" as const, priceCAD: 3005, asOf: nowIso },
   accountId: "acct-synthetic",
-  universalSymbolId: "symbol-synthetic",
+  brokerSymbol: "CSU.TO",
   now: nowIso,
   killSwitchArmed: true,
   maxSnapshotAgeSeconds: 120,
