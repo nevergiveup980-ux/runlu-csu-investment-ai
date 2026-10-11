@@ -57,3 +57,13 @@ Personal API quickstart: https://docs.snaptrade.com/docs/getting-started
 - `bridge/execution_bridge.py` now has `build_approved_dry_run()`; the CLI execution path refuses to proceed unless the matching proposal is already APPROVED in the local ledger.
 - `bridge/approval_cli.py` provides local-only `issue`, `approve`, `status`, and `verify` commands. It performs no network calls.
 - Live brokerage submission remains disabled.
+
+
+## Local approval panel
+- `bridge/approval_panel.py` binds only to `127.0.0.1:8775` and serves a private human-review screen with **APPROVE / REJECT** controls.
+- The panel accepts only already-preflighted one-share CSU limit-order packets, keeps raw runtime order data in memory, and writes only filtered audit metadata to the private hash-chained ledger.
+- The browser session uses a random local session token; API calls require `X-Approval-Session`, local Host/Origin checks, no CORS, no caching, CSP, frame denial, and loopback binding.
+- Approving a card records `APPROVED` and returns an **approved DRY-RUN** envelope only. It cannot submit to SnapTrade.
+- Approval is cryptographically bound to the exact order action/symbol/price/quantity/client-order-id digest. A post-approval price or action change is rejected.
+- `bridge/approval_panel_client.py` reads the private session token and registers packets only to a loopback URL. Non-loopback destinations are rejected.
+- The panel UI never shows the brokerage account ID, cash, buying power, credentials, or raw approval token.
