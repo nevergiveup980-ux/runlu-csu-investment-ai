@@ -6,6 +6,7 @@ from execution_bridge import (
     ExecutionBridgeError,
     build_approved_dry_run,
     build_dry_run,
+    execution_order_digest,
     submit_live,
 )
 from approval_ledger import approve_proposal, issue_approval_challenge
@@ -64,7 +65,7 @@ class ExecutionBridgeTests(unittest.TestCase):
             challenge = issue_approval_challenge(
                 self.order()["client_order_id"],
                 expires_at="2099-01-01T00:00:00Z",
-                proposal_digest="synthetic-digest",
+                proposal_digest=execution_order_digest(self.order()),
                 path=ledger,
             )
             approve_proposal(
@@ -76,6 +77,26 @@ class ExecutionBridgeTests(unittest.TestCase):
             result = build_approved_dry_run(self.order(), ledger_path=ledger).as_dict()
             self.assertEqual(result["mode"], "DRY_RUN_ONLY")
             self.assertFalse(result["network_sent"])
+
+    def test_approved_dry_run_rejects_changed_price(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "approval-ledger.jsonl"
+            order = self.order()
+            challenge = issue_approval_challenge(
+                order["client_order_id"],
+                expires_at="2099-01-01T00:00:00Z",
+                proposal_digest=execution_order_digest(order),
+                path=ledger,
+            )
+            approve_proposal(
+                order["client_order_id"],
+                challenge.approval_token,
+                path=ledger,
+                at="2098-12-31T23:59:00Z",
+            )
+            order["price"] = 2999.0
+            with self.assertRaises(ExecutionBridgeError):
+                build_approved_dry_run(order, ledger_path=ledger)
 
     def test_live_submission_is_impossible(self):
         with self.assertRaises(RuntimeError):
