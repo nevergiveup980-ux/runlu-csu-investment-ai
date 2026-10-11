@@ -10,6 +10,7 @@ Bind address is always 127.0.0.1. No CORS. No broker credentials are accepted.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import secrets
@@ -71,6 +72,7 @@ class PanelState:
     def __init__(self, ledger_path: Path = DEFAULT_LEDGER):
         self.ledger_path = ledger_path
         self._pending: Dict[str, Dict[str, Any]] = {}
+        self._reviews: Dict[str, Dict[str, Any]] = {}
 
     def register(self, packet: Dict[str, Any]) -> Dict[str, Any]:
         if not isinstance(packet, dict) or not isinstance(packet.get("order"), dict):
@@ -95,6 +97,116 @@ class PanelState:
             "approval_token": challenge.approval_token,
         }
         return self.card(proposal_id)
+
+
+    def register_review(self, packet: Dict[str, Any]) -> Dict[str, Any]:
+        if not isinstance(packet, dict):
+            raise ApprovalPanelError("Review packet must be an object")
+        if packet.get("kind") != "CSU_DECISION_REVIEW" or packet.get("version") != 1:
+            raise ApprovalPanelError("Unsupported review packet")
+        if packet.get("symbol") != "CSU.TO" or packet.get("quantity") != 1:
+            raise ApprovalPanelError("Only one-share CSU.TO reviews are accepted")
+        if packet.get("action") not in ("BUY", "SELL"):
+            raise ApprovalPanelError("Review action must be BUY or SELL")
+        if packet.get("simulationOnly") is not True or packet.get("brokerSubmitted") is not False:
+            raise ApprovalPanelError("Only simulation-only reviews are accepted")
+
+        proposal_id = str(packet.get("proposalId") or "")
+        if not proposal_id:
+            raise ApprovalPanelError("proposalId is required")
+        expires_at = str(packet.get("expiresAt") or "")
+        expiry = _parse_time(expires_at)
+        if expiry <= datetime.now(timezone.utc):
+            raise ApprovalPanelError("Review is already expired")
+
+        current_shares = int(packet.get("currentShares"))
+        target_shares = int(packet.get("targetShares"))
+        if current_shares < 0 or current_shares > 3 or target_shares < 0 or target_shares > 3:
+            raise ApprovalPanelError("Review share counts are outside the 0-3 range")
+
+        sanitized = {
+            "kind": "CSU_DECISION_REVIEW",
+            "version": 1,
+            "proposalId": proposal_id,
+            "symbol": "CSU.TO",
+            "action": packet["action"],
+            "quantity": 1,
+            "indicativeLimitCAD": float(packet.get("indicativeLimitCAD")),
+            "expiresAt": expires_at,
+            "role": str(packet.get("role") or "NONE"),
+            "currentShares": current_shares,
+            "targetShares": target_shares,
+            "score": int(packet.get("score") or 0),
+            "confidence": str(packet.get("confidence") or "LOW"),
+            "reasons": [str(x) for x in (packet.get("reasons") or [])][:20],
+            "simulationOnly": True,
+            "brokerSubmitted": False,
+        }
+        if sanitized["indicativeLimitCAD"] <= 0:
+            raise ApprovalPanelError("Indicative limit must be positive")
+
+        digest = hashlib.sha256(
+            json.dumps(sanitized, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
+        challenge = issue_approval_challenge(
+            proposal_id,
+            expires_at=expires_at,
+            proposal_digest=digest,
+            path=self.ledger_path,
+        )
+        self._reviews[proposal_id] = {
+            "packet": sanitized,
+            "approval_token": challenge.approval_token,
+        }
+        return self.review_card(proposal_id)
+
+    def review_card(self, proposal_id: str) -> Dict[str, Any]:
+        item = self._reviews.get(proposal_id)
+        if not item:
+            raise ApprovalPanelError("Review is not available in this panel session")
+        p = item["packet"]
+        status = proposal_status(proposal_id, self.ledger_path)
+        return {
+            "proposal_id": proposal_id,
+            "state": status["state"],
+            "symbol": "CSU.TO",
+            "action": p["action"],
+            "quantity": 1,
+            "order_type": "REVIEW_ONLY",
+            "limit_price_cad": p["indicativeLimitCAD"],
+            "expires_at": p["expiresAt"],
+            "role": p["role"],
+            "current_shares": p["currentShares"],
+            "target_shares": p["targetShares"],
+            "score": p["score"],
+            "confidence": p["confidence"],
+            "reasons": p["reasons"],
+            "quote_as_of": None,
+            "snapshot_as_of": None,
+            "broker_submission_enabled": False,
+            "simulation_only": True,
+        }
+
+    def approve_review(self, proposal_id: str) -> Dict[str, Any]:
+        item = self._reviews.get(proposal_id)
+        if not item:
+            raise ApprovalPanelError("Review is not available in this panel session")
+        approve_proposal(
+            proposal_id,
+            item["approval_token"],
+            path=self.ledger_path,
+        )
+        return {
+            "proposal": self.review_card(proposal_id),
+            "approved_review": True,
+            "broker_submission_enabled": False,
+        }
+
+    def reject_review(self, proposal_id: str) -> Dict[str, Any]:
+        if proposal_id not in self._reviews:
+            raise ApprovalPanelError("Review is not available in this panel session")
+        reject_proposal(proposal_id, path=self.ledger_path)
+        return self.review_card(proposal_id)
 
     def card(self, proposal_id: str) -> Dict[str, Any]:
         item = self._pending.get(proposal_id)
@@ -124,7 +236,9 @@ class PanelState:
         }
 
     def list_cards(self):
-        return [self.card(pid) for pid in list(self._pending)]
+        cards = [self.review_card(pid) for pid in list(self._reviews)]
+        cards.extend(self.card(pid) for pid in list(self._pending))
+        return cards
 
     def approve(self, proposal_id: str) -> Dict[str, Any]:
         item = self._pending.get(proposal_id)
@@ -277,7 +391,13 @@ def make_handler(state: PanelState, session_token: str, port: int):
             path = urlparse(self.path).path
             try:
                 body = self._body()
-                if path == "/api/register":
+                if path == "/api/register-review":
+                    self._json({"proposal": state.register_review(body)})
+                elif path == "/api/approve-review":
+                    self._json(state.approve_review(str(body.get("proposal_id") or "")))
+                elif path == "/api/reject-review":
+                    self._json({"proposal": state.reject_review(str(body.get("proposal_id") or ""))})
+                elif path == "/api/register":
                     self._json({"proposal": state.register(body)})
                 elif path == "/api/approve":
                     self._json(state.approve(str(body.get("proposal_id") or "")))
