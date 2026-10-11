@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from approval_panel import ApprovalPanelError, PanelState
+from approval_panel import ApprovalPanelError, PanelState, _html
 
 
 class ApprovalPanelStateTests(unittest.TestCase):
@@ -88,6 +88,12 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertEqual(rejected["state"], "REJECTED")
         with self.assertRaises(Exception):
             self.state.approve_review(card["proposal_id"])
+
+    def test_html_routes_review_cards_to_review_only_endpoints(self):
+        page = _html("synthetic-session")
+        self.assertIn("/api/approve-review", page)
+        self.assertIn("/api/reject-review", page)
+        self.assertIn("LOCAL REVIEW ONLY", page)
 
     def test_register_card_never_surfaces_private_account_data(self):
         card = self.state.register(self.packet())
