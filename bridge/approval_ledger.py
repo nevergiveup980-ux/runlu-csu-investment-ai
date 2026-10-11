@@ -329,3 +329,26 @@ def halt_proposal(
     if current["state"] in {"REJECTED", "EXPIRED", "HALTED"}:
         raise ApprovalLedgerError("Proposal is already terminal")
     return append_event(proposal_id, "HALTED", {"reason": reason}, path=path, at=at)
+
+
+def proposal_digest(proposal_id: str, path: Path = DEFAULT_LEDGER) -> str:
+    verify_ledger(path)
+    events = _proposal_events(proposal_id, read_ledger(path))
+    if not events or events[0].get("event") != "PROPOSAL_CREATED":
+        raise ApprovalLedgerError("Unknown proposal")
+    digest = (events[0].get("details") or {}).get("proposal_digest")
+    if not isinstance(digest, str) or not digest:
+        raise ApprovalLedgerError("Proposal digest is missing")
+    return digest
+
+
+def reject_proposal(
+    proposal_id: str,
+    *,
+    path: Path = DEFAULT_LEDGER,
+    at: Optional[str] = None,
+) -> Dict[str, Any]:
+    status = proposal_status(proposal_id, path)
+    if status["state"] != "PENDING_APPROVAL":
+        raise ApprovalLedgerError("Only a pending proposal may be rejected")
+    return append_event(proposal_id, "REJECTED", {"human_rejected": True}, path=path, at=at)
