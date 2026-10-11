@@ -5,6 +5,7 @@
 import type { BotDecision, BotPortfolioState } from "./csu-bot-v2";
 
 export type TradeProposal = {
+  proposalId: string;
   mode: "HUMAN_REVIEW_REQUIRED";
   symbol: "CSU.TO";
   action: "BUY" | "SELL";
@@ -19,11 +20,13 @@ export type TradeProposal = {
 };
 
 export function createTradeProposal(
+  proposalId: string,
   decision: BotDecision,
   portfolio: BotPortfolioState,
   limitPriceCAD: number,
   expiresAt: string,
 ): TradeProposal | null {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(proposalId)) return null;
   if (decision.action === "HOLD" || decision.quantity !== 1 || !decision.risk.approved) return null;
   if (portfolio.currency !== "CAD") return null;
   if (!Number.isFinite(limitPriceCAD) || limitPriceCAD <= 0) return null;
@@ -34,6 +37,7 @@ export function createTradeProposal(
   }
   if ((portfolio.openOrders || []).some(o => ["CSU", "CSU.TO", "CSU:TSX"].includes(o.symbol.toUpperCase()))) return null;
   return {
+    proposalId,
     mode: "HUMAN_REVIEW_REQUIRED",
     symbol: "CSU.TO",
     action: decision.action,
