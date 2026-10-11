@@ -383,6 +383,74 @@ export default {
         }), { status: 200, headers: { "content-type": "application/json", "cache-control": "no-store" } });
       }
 
+      if (url.pathname === "/api/bot/realtime-proposal" && request.method === "POST") {
+        const secret = (env as Env & { CSU_SNAPSHOT_TOKEN?: string }).CSU_SNAPSHOT_TOKEN;
+        if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
+          return new Response(JSON.stringify({ error: "Private realtime proposal unavailable" }), {
+            status: 403,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        let body: { snapshot: BrokerAccountSnapshot; expiresAt: string; interval?: "1min" | "5min" };
+        try {
+          body = await request.json() as typeof body;
+        } catch {
+          return new Response(JSON.stringify({ error: "Invalid realtime proposal JSON" }), {
+            status: 400,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        const validation = validateSnapshot(body.snapshot);
+        if (!validation.valid) {
+          return new Response(JSON.stringify({ error: "Broker snapshot failed safety validation", validation }), {
+            status: 422,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        const interval = body.interval === "5min" ? "5min" : "1min";
+        const candles = await twelve(env, interval);
+        if (!candles.length) {
+          return new Response(JSON.stringify({ error: "No realtime market data returned" }), {
+            status: 404,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        const ind = indicators(candles);
+        const portfolio = toBotPortfolio(body.snapshot);
+        const decision = buildBotDecision(ind, portfolio);
+        const proposal = createTradeProposal(
+          crypto.randomUUID(),
+          decision,
+          portfolio,
+          ind.price,
+          body.expiresAt,
+        );
+        const reviewPacket = proposal ? buildDecisionReviewPacket(proposal, decision, portfolio) : null;
+
+        return new Response(JSON.stringify({
+          symbol: "CSU.TO",
+          mode: "REALTIME_LITE_HUMAN_REVIEW",
+          interval,
+          marketDataAsOf: candles.at(-1)?.datetime,
+          indicators: ind,
+          validation,
+          decision,
+          proposal,
+          reviewPacket,
+          brokerSubmitted: false,
+          notice: proposal
+            ? "Realtime-lite candidate created for human review. No brokerage order has been submitted."
+            : "Realtime-lite scan produced no executable proposal.",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json", "cache-control": "no-store" },
+        });
+      }
+
       if (url.pathname === "/api/bot/simulate") {
         if (request.method !== "GET") return json({ error: "Simulation endpoint is GET-only." }, 405, "no-store");
         const portfolio = parsePortfolio(url);
@@ -433,8 +501,8 @@ export default {
         if (interval === "1day") {
           candles = await yahooDaily();
           source = "Yahoo Finance chart (unofficial, delayed/historical)";
-        } else if (interval === "1h") {
-          candles = await twelve(env, "1h");
+        } else if (["1min", "5min", "1h"].includes(interval)) {
+          candles = await twelve(env, interval);
           source = "Twelve Data intraday";
         } else {
           return json({
