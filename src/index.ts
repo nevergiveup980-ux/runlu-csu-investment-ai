@@ -3,6 +3,7 @@ import { createPaperLedger, simulateDecision } from "./paper-trader";
 import { accountDiagnostics, toBotPortfolio, validateSnapshot, type BrokerAccountSnapshot } from "./broker-bridge";
 import { createTradeProposal } from "./trade-proposal";
 import { buildDecisionReviewPacket } from "./review-packet";
+import { scoreScoutCandidate } from "./scout";
 
 type Candle = {
   datetime: string;
@@ -201,18 +202,27 @@ async function yahooDaily(): Promise<Candle[]> {
     .filter((c: Candle) => [c.open, c.high, c.low, c.close].every(Number.isFinite));
 }
 
-async function twelve(env: Env, interval: string): Promise<Candle[]> {
-  if (!env.TWELVE_DATA_API_KEY) throw new Error("Intraday data source not configured");
+function normalizeScoutSymbol(raw: string) {
+  const symbol = String(raw || "").trim().toUpperCase();
+  if (!/^[A-Z0-9.\-]{1,12}:TSX$/.test(symbol)) {
+    throw new Error("Scout V1 accepts TSX symbols in TICKER:TSX format only");
+  }
+  return symbol;
+}
+
+async function twelveSymbol(env: Env, symbol: string, interval: string, outputsize = 300): Promise<Candle[]> {
+  if (!env.TWELVE_DATA_API_KEY) throw new Error("Market data source not configured");
+  const normalized = normalizeScoutSymbol(symbol);
   const url = new URL("https://api.twelvedata.com/time_series");
-  url.searchParams.set("symbol", "CSU:TSX");
+  url.searchParams.set("symbol", normalized);
   url.searchParams.set("interval", interval);
-  url.searchParams.set("outputsize", "300");
+  url.searchParams.set("outputsize", String(outputsize));
 
   const response = await fetch(url, {
     headers: { Authorization: `apikey ${env.TWELVE_DATA_API_KEY}` },
   });
   const data: any = await response.json();
-  if (!data.values) throw new Error(data.message || "Intraday data unavailable");
+  if (!data.values) throw new Error(data.message || "Market data unavailable");
 
   return data.values
     .slice()
@@ -226,6 +236,10 @@ async function twelve(env: Env, interval: string): Promise<Candle[]> {
       volume: +(v.volume || 0),
     }))
     .filter((c: Candle) => [c.open, c.high, c.low, c.close].every(Number.isFinite));
+}
+
+async function twelve(env: Env, interval: string): Promise<Candle[]> {
+  return twelveSymbol(env, "CSU:TSX", interval);
 }
 
 function parseOpenOrders(url: URL): OpenOrder[] {
