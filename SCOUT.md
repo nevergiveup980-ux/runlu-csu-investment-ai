@@ -116,3 +116,51 @@ broader market-discovery feed.
 
 CSU continues to use the dedicated strategy, realtime-lite loop, risk engine,
 proposal path, and localhost approval flow.
+
+
+## Scout Hunter V1 — automatic candidate-pool generator
+
+Scout no longer has to wait for us to type every symbol manually.
+
+The protected endpoint `GET /api/scout/universe` requests Twelve Data's TSX
+stock catalog and keeps only ordinary Canadian TSX common-stock metadata. It
+returns a **research universe only**; catalog membership never grants realtime
+or trading permission.
+
+`bridge/scout_hunter.py` then:
+
+1. caches the sanitized TSX research catalog locally for 12 hours;
+2. removes CSU from the hunting rotation because CSU remains the primary bot;
+3. remembers a private cursor in `.csu-private/scout-hunter-state.json`;
+4. selects at most 8 new symbols per cycle;
+5. asks `/api/scout/scan` to score that batch;
+6. merges results into the private Scout registry;
+7. advances the cursor so later cycles explore different stocks;
+8. reports only the current top research candidates.
+
+This creates a slow, cost-aware market search instead of hammering every TSX
+symbol at once.
+
+A full rotation does **not** imply approval. Every discovered stock still enters
+`RESEARCH_REQUIRED` and must pass the user + assistant joint-research gate.
+
+## Authority boundary after Hunter
+
+```text
+TSX catalog
+   |
+Scout Hunter rotation
+   |
+Scout technical ranking
+   |
+RESEARCH_REQUIRED
+   |
+user + assistant research
+   |
+PASS / WATCH / APPROVED_UNIVERSE
+   |
+tradeEligible = false
+```
+
+CSU remains the only symbol connected to the existing dedicated proposal and
+execution-readiness architecture.
