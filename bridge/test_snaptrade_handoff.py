@@ -1,7 +1,10 @@
+import json
 import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-from snaptrade_handoff import _auth_headers, sanitize_snapshot
+from snaptrade_handoff import _auth_headers, cache_sanitized_snapshot, sanitize_snapshot
 
 
 class HandoffTests(unittest.TestCase):
@@ -12,6 +15,25 @@ class HandoffTests(unittest.TestCase):
         with patch.dict(os.environ, {"CSU_SNAPSHOT_TOKEN": "synthetic-token"}, clear=True):
             headers = _auth_headers()
             self.assertEqual(headers["Authorization"], "Bearer synthetic-token")
+
+    def test_private_snapshot_cache_is_sanitized_and_local(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "latest-snapshot.json"
+            raw = {
+                "provider": "synthetic",
+                "currency": "CAD",
+                "cash": 10000,
+                "buyingPower": 7000,
+                "fetchedAt": "2099-01-01T00:00:00Z",
+                "clientSecret": "DO-NOT-CACHE",
+                "positions": [],
+                "orders": [],
+                "history": [],
+            }
+            cache_sanitized_snapshot(raw, path)
+            cached = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(cached["currency"], "CAD")
+            self.assertNotIn("clientSecret", cached)
 
     def test_whitelists_account_fields_and_drops_secrets(self):
         raw = {
