@@ -2,6 +2,7 @@ import { botStatus, buildBotDecision, type BotPortfolioState, type OpenOrder } f
 import { createPaperLedger, simulateDecision } from "./paper-trader";
 import { accountDiagnostics, toBotPortfolio, validateSnapshot, type BrokerAccountSnapshot } from "./broker-bridge";
 import { createTradeProposal } from "./trade-proposal";
+import { buildDecisionReviewPacket } from "./review-packet";
 
 type Candle = {
   datetime: string;
@@ -367,12 +368,14 @@ export default {
         const ind = indicators(candles);
         const decision = buildBotDecision(ind, portfolio);
         const proposal = createTradeProposal(crypto.randomUUID(), decision, portfolio, Number(body.limitPriceCAD), body.expiresAt);
+        const reviewPacket = proposal ? buildDecisionReviewPacket(proposal, decision, portfolio) : null;
         return new Response(JSON.stringify({
           symbol: "CSU.TO",
           mode: "HUMAN_REVIEW_REQUIRED",
           validation,
           decision,
           proposal,
+          reviewPacket,
           brokerSubmitted: false,
           notice: proposal
             ? "Proposal created for human review. No brokerage order has been submitted."
