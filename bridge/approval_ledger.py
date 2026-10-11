@@ -54,6 +54,9 @@ def _safe_public_details(details: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
     for key, value in details.items():
         normalized = str(key).lower().replace("-", "_")
+        if normalized == "approval_token_hash":
+            out[str(key)] = value
+            continue
         if normalized in forbidden or any(x in normalized for x in ("secret", "token", "password", "cookie")):
             continue
         out[str(key)] = value
