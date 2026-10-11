@@ -77,3 +77,11 @@ Personal API quickstart: https://docs.snaptrade.com/docs/getting-started
 - `bridge/bot_review_hook.py` extracts only that packet and refuses extra fields or non-loopback destinations before posting to `/api/register-review` on the local approval panel.
 - `bridge/local_bridge_hook.py` exposes `publish_bot_review_to_local_panel(bot_response)` as the local integration point.
 - A human APPROVE on a review card records approval in the private audit ledger, but returns **no execution envelope** and leaves broker submission disabled.
+
+
+## Automatic review candidate push
+- `bridge/review_candidate_handoff.py` can take the local reader's sanitized snapshot, ask the protected bot proposal endpoint for a review candidate, and immediately forward only `reviewPacket` to the localhost panel.
+- If the bot returns HOLD or no executable proposal, nothing is published to the approval panel.
+- `bridge/local_bridge_hook.py` now exposes `publish_review_candidate_to_local_panel(dashboard_payload, indicative_limit_cad, expires_at)` as the one-call integration point for the existing local bridge.
+- The private bot call now requires `CSU_SNAPSHOT_TOKEN`; the handoff fails closed if that token is absent.
+- This path remains review-only: it never constructs or submits a brokerage request.
