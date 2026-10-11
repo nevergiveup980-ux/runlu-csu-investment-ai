@@ -1,8 +1,18 @@
+import os
 import unittest
-from snaptrade_handoff import sanitize_snapshot
+from unittest.mock import patch
+from snaptrade_handoff import _auth_headers, sanitize_snapshot
 
 
 class HandoffTests(unittest.TestCase):
+    def test_private_endpoint_requires_local_bearer_token(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(RuntimeError):
+                _auth_headers()
+        with patch.dict(os.environ, {"CSU_SNAPSHOT_TOKEN": "synthetic-token"}, clear=True):
+            headers = _auth_headers()
+            self.assertEqual(headers["Authorization"], "Bearer synthetic-token")
+
     def test_whitelists_account_fields_and_drops_secrets(self):
         raw = {
             "provider": "SnapTrade / Webull Canada",
