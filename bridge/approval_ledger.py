@@ -12,6 +12,8 @@ import hmac
 import json
 import os
 import secrets
+import fcntl
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -101,6 +103,18 @@ def verify_ledger(path: Path = DEFAULT_LEDGER) -> Dict[str, Any]:
     return {"valid": True, "entries": len(rows), "head_hash": previous}
 
 
+@contextmanager
+def _ledger_lock(path: Path):
+    lock_path = Path(str(path) + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 def append_event(
     proposal_id: str,
     event: str,
@@ -118,28 +132,29 @@ def append_event(
         raise ApprovalLedgerError("Unsupported audit event")
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    state = verify_ledger(path)
-    base = {
-        "version": 1,
-        "proposal_id": proposal_id,
-        "event": event,
-        "at": at or _utc_now(),
-        "details": _safe_public_details(details),
-        "prev_hash": state["head_hash"],
-    }
-    row = dict(base)
-    row["entry_hash"] = _hash_entry(base)
+    with _ledger_lock(path):
+        state = verify_ledger(path)
+        base = {
+            "version": 1,
+            "proposal_id": proposal_id,
+            "event": event,
+            "at": at or _utc_now(),
+            "details": _safe_public_details(details),
+            "prev_hash": state["head_hash"],
+        }
+        row = dict(base)
+        row["entry_hash"] = _hash_entry(base)
 
-    encoded = json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-    try:
-        os.write(fd, encoded.encode("utf-8"))
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+        encoded = json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        try:
+            os.write(fd, encoded.encode("utf-8"))
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 
-    verify_ledger(path)
-    return row
+        verify_ledger(path)
+        return row
 
 
 def issue_approval_challenge(
