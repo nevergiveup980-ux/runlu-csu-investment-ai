@@ -8,6 +8,7 @@ and no order write/cancel methods.
 """
 from snaptrade_handoff import forward_snapshot
 from bot_review_hook import publish_review_response
+from review_candidate_handoff import request_and_publish_review
 
 
 def publish_to_csu_bot(dashboard_payload):
@@ -18,3 +19,12 @@ def publish_to_csu_bot(dashboard_payload):
 def publish_bot_review_to_local_panel(bot_response):
     """Forward only CSU Bot's sanitized simulation reviewPacket to localhost:8775."""
     return publish_review_response(bot_response)
+
+
+def publish_review_candidate_to_local_panel(dashboard_payload, indicative_limit_cad, expires_at):
+    """Ask CSU Bot for a reviewable decision, then push only its safe review packet locally."""
+    return request_and_publish_review(
+        dashboard_payload,
+        indicative_limit_cad=indicative_limit_cad,
+        expires_at=expires_at,
+    )
