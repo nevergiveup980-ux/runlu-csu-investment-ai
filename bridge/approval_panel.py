@@ -282,7 +282,7 @@ button.primary{{background:#171717;color:white;border-color:#171717}}button:disa
 </style></head><body><main>
 <div class="muted">RUNLU · LOCALHOST ONLY</div>
 <h1>CSU Trade Approval / 交易审批</h1>
-<div class="banner"><b>DRY RUN ONLY</b> · 当前页面不会向券商提交订单。批准只会写入本机审计账本并生成审核后的 dry-run。</div>
+<div class="banner"><b>LOCAL REVIEW ONLY</b> · 当前页面不会向券商提交订单。批准只记录本机审核结果；模拟订单卡片仍只生成 dry-run。</div>
 <div id="cards"><div class="muted">Waiting for a proposal…</div></div>
 </main><script>
 const SESSION={token};
@@ -304,8 +304,9 @@ function renderCard(x){{
  const yes=document.createElement("button");yes.className="primary";yes.textContent="APPROVE / 批准";
  const no=document.createElement("button");no.textContent="REJECT / 拒绝";
  const pending=x.state==="PENDING_APPROVAL";yes.disabled=!pending;no.disabled=!pending;
- yes.onclick=async()=>{{if(!confirm("Approve this exact CSU limit-order proposal? No broker order will be sent in this version."))return;try{{await api("/api/approve",{{proposal_id:x.proposal_id}});await load()}}catch(e){{alert(e.message)}}}};
- no.onclick=async()=>{{if(!confirm("Reject this proposal?"))return;try{{await api("/api/reject",{{proposal_id:x.proposal_id}});await load()}}catch(e){{alert(e.message)}}}};
+ const reviewOnly=x.order_type==="REVIEW_ONLY";
+ yes.onclick=async()=>{{const msg=reviewOnly?"Approve this simulation-only CSU decision review?":"Approve this exact CSU limit-order proposal? No broker order will be sent in this version.";if(!confirm(msg))return;try{{await api(reviewOnly?"/api/approve-review":"/api/approve",{{proposal_id:x.proposal_id}});await load()}}catch(e){{alert(e.message)}}}};
+ no.onclick=async()=>{{if(!confirm("Reject this proposal?"))return;try{{await api(reviewOnly?"/api/reject-review":"/api/reject",{{proposal_id:x.proposal_id}});await load()}}catch(e){{alert(e.message)}}}};
  row.append(yes,no);c.append(row);return c
 }}
 async function load(){{try{{const d=await api("/api/pending");const root=document.getElementById("cards");root.replaceChildren();if(!d.proposals.length){{const m=document.createElement("div");m.className="muted";m.textContent="Waiting for a proposal…";root.append(m)}}else d.proposals.forEach(x=>root.append(renderCard(x)))}}catch(e){{document.getElementById("cards").textContent=e.message}}}}
