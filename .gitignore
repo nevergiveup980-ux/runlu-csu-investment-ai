@@ -5,3 +5,6 @@ node_modules/
 .env.*.local
 .wrangler/
 .DS_Store
+
+# Local CSU approval/audit state — never commit brokerage runtime data
+.csu-private/
