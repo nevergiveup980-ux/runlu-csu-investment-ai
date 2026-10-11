@@ -13,7 +13,10 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict
+
+from approval_ledger import DEFAULT_LEDGER, ApprovalLedgerError, proposal_status
 
 SNAPTRADE_PLACE_ORDER_URL = "https://api.snaptrade.com/trade/place"
 UUID_RE = re.compile(
@@ -123,6 +126,21 @@ def build_dry_run(order_body: Dict[str, Any]) -> DryRunEnvelope:
     )
 
 
+def build_approved_dry_run(
+    order_body: Dict[str, Any],
+    *,
+    ledger_path: Path = DEFAULT_LEDGER,
+) -> DryRunEnvelope:
+    normalized = validate_order_body(order_body)
+    try:
+        status = proposal_status(normalized["client_order_id"], ledger_path)
+    except ApprovalLedgerError as exc:
+        raise ExecutionBridgeError("Approval ledger validation failed") from exc
+    if status.get("state") != "APPROVED":
+        raise ExecutionBridgeError("Proposal is not approved in the local audit ledger")
+    return build_dry_run(normalized)
+
+
 def submit_live(*_args: Any, **_kwargs: Any) -> None:
     raise RuntimeError(
         "Live brokerage submission is intentionally disabled in this bridge version"
@@ -133,7 +151,7 @@ def main() -> None:
     import sys
 
     raw = json.load(sys.stdin)
-    envelope = build_dry_run(raw)
+    envelope = build_approved_dry_run(raw)
     json.dump(envelope.as_dict(), sys.stdout, indent=2, sort_keys=True)
     sys.stdout.write("\n")
 
