@@ -67,3 +67,13 @@ Personal API quickstart: https://docs.snaptrade.com/docs/getting-started
 - Approval is cryptographically bound to the exact order action/symbol/price/quantity/client-order-id digest. A post-approval price or action change is rejected.
 - `bridge/approval_panel_client.py` reads the private session token and registers packets only to a loopback URL. Non-loopback destinations are rejected.
 - The panel UI never shows the brokerage account ID, cash, buying power, credentials, or raw approval token.
+
+
+## Bot -> localhost human-review handoff
+- `src/review-packet.ts` creates a **sanitized, non-executable** `CSU_DECISION_REVIEW` packet whenever a valid trade proposal exists.
+- The packet contains only proposal ID, CSU symbol, BUY/SELL direction, one-share quantity, indicative limit, expiry, role, current/target share counts, score/confidence, and reasons.
+- It deliberately omits brokerage account IDs, cash, buying power, snapshots, credentials, and any broker submission authorization.
+- `/api/bot/trade-proposal` now returns `reviewPacket` beside the proposal.
+- `bridge/bot_review_hook.py` extracts only that packet and refuses extra fields or non-loopback destinations before posting to `/api/register-review` on the local approval panel.
+- `bridge/local_bridge_hook.py` exposes `publish_bot_review_to_local_panel(bot_response)` as the local integration point.
+- A human APPROVE on a review card records approval in the private audit ledger, but returns **no execution envelope** and leaves broker submission disabled.
