@@ -45,3 +45,15 @@ Personal API quickstart: https://docs.snaptrade.com/docs/getting-started
 - The account ID is redacted from review output.
 - `submit_live()` intentionally raises; there is no broker network write path in this version.
 - `bridge/test_execution_bridge.py` verifies that market orders, other symbols, multi-share orders, and live submission are blocked.
+
+
+## Local human approval + audit ledger
+- `bridge/approval_ledger.py` stores an append-only, hash-chained audit trail under `.csu-private/approval-ledger.jsonl` by default.
+- `.csu-private/` is gitignored. Raw account IDs, balances, credentials, full snapshots, and raw approval tokens are filtered from ledger entries.
+- Each proposal receives a one-time local approval token. Only its SHA-256 hash is persisted; the raw token is shown once to the local operator.
+- Approval fails closed on wrong token, duplicate proposal ID, expiry, ledger corruption, or tampering.
+- Ledger writes use an OS file lock and `fsync` before returning.
+- Submission/broker reconciliation events are modeled durably: `SUBMISSION_STARTED`, `BROKER_ACK`, `BROKER_STATUS`, and `HALTED`.
+- `bridge/execution_bridge.py` now has `build_approved_dry_run()`; the CLI execution path refuses to proceed unless the matching proposal is already APPROVED in the local ledger.
+- `bridge/approval_cli.py` provides local-only `issue`, `approve`, `status`, and `verify` commands. It performs no network calls.
+- Live brokerage submission remains disabled.
