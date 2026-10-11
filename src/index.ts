@@ -465,6 +465,73 @@ export default {
         });
       }
 
+      if (url.pathname === "/api/scout/scan" && request.method === "POST") {
+        const secret = (env as Env & { CSU_SNAPSHOT_TOKEN?: string }).CSU_SNAPSHOT_TOKEN;
+        if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
+          return new Response(JSON.stringify({ error: "Private Scout scan unavailable" }), {
+            status: 403,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        let body: { symbols?: string[] };
+        try {
+          body = await request.json() as typeof body;
+        } catch {
+          return new Response(JSON.stringify({ error: "Invalid Scout scan JSON" }), {
+            status: 400,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        if (!Array.isArray(body.symbols) || body.symbols.length < 1 || body.symbols.length > 8) {
+          return new Response(JSON.stringify({ error: "Scout V1 requires 1-8 TSX symbols" }), {
+            status: 400,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        const uniqueSymbols = [...new Set(body.symbols.map(normalizeScoutSymbol))];
+        const candidates: any[] = [];
+        const errors: { symbol: string; error: string }[] = [];
+
+        for (const symbol of uniqueSymbols) {
+          try {
+            const candles = await twelveSymbol(env, symbol, "1day", 260);
+            if (candles.length < 50) throw new Error("Insufficient daily history for Scout");
+            const market = indicators(candles);
+            const candidate = scoreScoutCandidate(symbol, market);
+            candidates.push({
+              ...candidate,
+              marketDataAsOf: candles.at(-1)?.datetime,
+            });
+          } catch (error) {
+            errors.push({ symbol, error: String(error) });
+          }
+        }
+
+        candidates.sort((a, b) => b.score - a.score);
+        return new Response(JSON.stringify({
+          product: "RUNLU Scout V1",
+          mode: "DISCOVERY_RESEARCH_ONLY",
+          primaryFocus: "CSU.TO",
+          scanned: uniqueSymbols.length,
+          candidates,
+          errors,
+          policy: {
+            researchRequired: true,
+            directTradingAllowed: false,
+            autoPromotionAllowed: false,
+            jointResearchRequired: true,
+            explicitUserConfirmationRequired: true,
+          },
+          notice: "Scout ranks research candidates only. It cannot create broker orders or grant trading eligibility.",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json", "cache-control": "no-store" },
+        });
+      }
+
       if (url.pathname === "/api/bot/simulate") {
         if (request.method !== "GET") return json({ error: "Simulation endpoint is GET-only." }, 405, "no-store");
         const portfolio = parsePortfolio(url);
