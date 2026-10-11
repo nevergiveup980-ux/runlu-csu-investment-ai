@@ -45,6 +45,50 @@ class ApprovalPanelStateTests(unittest.TestCase):
             },
         }
 
+
+    def review_packet(self, proposal_id="22222222-2222-4222-8222-222222222222"):
+        expiry = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat().replace("+00:00", "Z")
+        return {
+            "kind": "CSU_DECISION_REVIEW",
+            "version": 1,
+            "proposalId": proposal_id,
+            "symbol": "CSU.TO",
+            "action": "BUY",
+            "quantity": 1,
+            "indicativeLimitCAD": 3000.0,
+            "expiresAt": expiry,
+            "role": "SWING",
+            "currentShares": 1,
+            "targetShares": 2,
+            "score": 4,
+            "confidence": "MEDIUM",
+            "reasons": ["synthetic review"],
+            "simulationOnly": True,
+            "brokerSubmitted": False,
+        }
+
+    def test_review_packet_can_be_approved_without_execution_envelope(self):
+        card = self.state.register_review(self.review_packet())
+        self.assertEqual(card["order_type"], "REVIEW_ONLY")
+        self.assertTrue(card["simulation_only"])
+        result = self.state.approve_review(card["proposal_id"])
+        self.assertTrue(result["approved_review"])
+        self.assertFalse(result["broker_submission_enabled"])
+        self.assertNotIn("dry_run", result)
+
+    def test_review_packet_rejects_non_simulation_mode(self):
+        packet = self.review_packet()
+        packet["simulationOnly"] = False
+        with self.assertRaises(ApprovalPanelError):
+            self.state.register_review(packet)
+
+    def test_review_rejection_is_durable(self):
+        card = self.state.register_review(self.review_packet())
+        rejected = self.state.reject_review(card["proposal_id"])
+        self.assertEqual(rejected["state"], "REJECTED")
+        with self.assertRaises(Exception):
+            self.state.approve_review(card["proposal_id"])
+
     def test_register_card_never_surfaces_private_account_data(self):
         card = self.state.register(self.packet())
         self.assertEqual(card["state"], "PENDING_APPROVAL")
