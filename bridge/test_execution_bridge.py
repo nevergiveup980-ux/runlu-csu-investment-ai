@@ -1,10 +1,14 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from execution_bridge import (
     ExecutionBridgeError,
+    build_approved_dry_run,
     build_dry_run,
     submit_live,
 )
+from approval_ledger import approve_proposal, issue_approval_challenge
 
 
 class ExecutionBridgeTests(unittest.TestCase):
@@ -50,6 +54,28 @@ class ExecutionBridgeTests(unittest.TestCase):
         order["symbol"] = "AAPL"
         with self.assertRaises(ExecutionBridgeError):
             build_dry_run(order)
+
+    def test_approved_dry_run_requires_matching_local_approval(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "approval-ledger.jsonl"
+            with self.assertRaises(ExecutionBridgeError):
+                build_approved_dry_run(self.order(), ledger_path=ledger)
+
+            challenge = issue_approval_challenge(
+                self.order()["client_order_id"],
+                expires_at="2099-01-01T00:00:00Z",
+                proposal_digest="synthetic-digest",
+                path=ledger,
+            )
+            approve_proposal(
+                self.order()["client_order_id"],
+                challenge.approval_token,
+                path=ledger,
+                at="2098-12-31T23:59:00Z",
+            )
+            result = build_approved_dry_run(self.order(), ledger_path=ledger).as_dict()
+            self.assertEqual(result["mode"], "DRY_RUN_ONLY")
+            self.assertFalse(result["network_sent"])
 
     def test_live_submission_is_impossible(self):
         with self.assertRaises(RuntimeError):
