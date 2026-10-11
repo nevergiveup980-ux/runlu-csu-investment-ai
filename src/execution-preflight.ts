@@ -19,7 +19,7 @@ export type ExecutionPreflightInput = {
   snapshot: BrokerAccountSnapshot;
   quote: LiveQuote;
   accountId: string;
-  universalSymbolId: string;
+  brokerSymbol: "CSU.TO";
   now: string;
   killSwitchArmed: boolean;
   maxSnapshotAgeSeconds: number;
@@ -30,8 +30,8 @@ export type ExecutionPreflightInput = {
 export type SnapTradeEquityLimitOrderPayload = {
   account_id: string;
   action: "BUY" | "SELL";
-  universal_symbol_id: string;
-  symbol: null;
+  universal_symbol_id: null;
+  symbol: "CSU.TO";
   order_type: "Limit";
   time_in_force: "Day";
   trading_session: "REGULAR";
@@ -62,7 +62,7 @@ export function executionPreflight(input: ExecutionPreflightInput) {
   if (input.proposal.symbol !== "CSU.TO" || input.quote.symbol !== "CSU.TO") blockers.push("Only CSU.TO is authorized");
   if (input.proposal.quantity !== 1 || input.proposal.orderType !== "LIMIT") blockers.push("Only one-share limit orders are authorized");
   if (!input.accountId) blockers.push("Private brokerage account id is required");
-  if (!input.universalSymbolId) blockers.push("Verified SnapTrade universal symbol id is required");
+  if (input.brokerSymbol !== "CSU.TO") blockers.push("Verified brokerage symbol must be CSU.TO");
   if (input.snapshot.accountId && input.snapshot.accountId !== input.accountId) blockers.push("Snapshot account does not match execution account");
   if (input.snapshot.currency !== "CAD") blockers.push("CAD account required");
   if (!Number.isFinite(input.quote.priceCAD) || input.quote.priceCAD <= 0) blockers.push("Live quote is invalid");
@@ -99,8 +99,8 @@ export function executionPreflight(input: ExecutionPreflightInput) {
   const payload: SnapTradeEquityLimitOrderPayload | null = blockers.length ? null : {
     account_id: input.accountId,
     action: input.proposal.action,
-    universal_symbol_id: input.universalSymbolId,
-    symbol: null,
+    universal_symbol_id: null,
+    symbol: input.brokerSymbol,
     order_type: "Limit",
     time_in_force: "Day",
     trading_session: "REGULAR",
