@@ -220,9 +220,94 @@ def proposal_status(proposal_id: str, path: Path = DEFAULT_LEDGER) -> Dict[str, 
         "BROKER_STATUS": "BROKER_STATUS",
         "HALTED": "HALTED",
     }
+    state = state_map[last]
+    if last == "BROKER_STATUS":
+        broker_state = str((events[-1].get("details") or {}).get("status") or "").upper()
+        state = {
+            "OPEN": "BROKER_ACCEPTED",
+            "PARTIAL": "PARTIALLY_FILLED",
+            "FILLED": "FILLED",
+            "CANCELLED": "CANCELLED",
+            "CANCELED": "CANCELLED",
+            "REJECTED": "BROKER_REJECTED",
+        }.get(broker_state, "BROKER_STATUS")
     return {
         "proposal_id": proposal_id,
-        "state": state_map[last],
+        "state": state,
         "events": len(events),
         "ledger_head": verify_ledger(path)["head_hash"],
     }
+
+
+def mark_submission_started(
+    proposal_id: str,
+    *,
+    path: Path = DEFAULT_LEDGER,
+    at: Optional[str] = None,
+) -> Dict[str, Any]:
+    status = proposal_status(proposal_id, path)
+    if status["state"] != "APPROVED":
+        raise ApprovalLedgerError("Only an approved proposal may start submission")
+    return append_event(proposal_id, "SUBMISSION_STARTED", {"network_result": "unknown"}, path=path, at=at)
+
+
+def record_broker_ack(
+    proposal_id: str,
+    broker_order_id: str,
+    *,
+    path: Path = DEFAULT_LEDGER,
+    at: Optional[str] = None,
+) -> Dict[str, Any]:
+    status = proposal_status(proposal_id, path)
+    if status["state"] != "SUBMISSION_UNKNOWN":
+        raise ApprovalLedgerError("Broker acknowledgement is not expected")
+    if not broker_order_id:
+        raise ApprovalLedgerError("broker_order_id is required")
+    broker_ref_hash = hashlib.sha256(str(broker_order_id).encode("utf-8")).hexdigest()
+    return append_event(
+        proposal_id,
+        "BROKER_ACK",
+        {"broker_order_id_hash": broker_ref_hash},
+        path=path,
+        at=at,
+    )
+
+
+def record_broker_status(
+    proposal_id: str,
+    broker_status: str,
+    filled_quantity: int,
+    *,
+    path: Path = DEFAULT_LEDGER,
+    at: Optional[str] = None,
+) -> Dict[str, Any]:
+    current = proposal_status(proposal_id, path)
+    if current["state"] not in {"SUBMISSION_UNKNOWN", "BROKER_ACCEPTED", "BROKER_STATUS"}:
+        raise ApprovalLedgerError("Broker status is not expected")
+    normalized = str(broker_status).upper()
+    if normalized not in {"OPEN", "PARTIAL", "FILLED", "CANCELLED", "CANCELED", "REJECTED"}:
+        raise ApprovalLedgerError("Unsupported broker status")
+    if filled_quantity not in (0, 1):
+        raise ApprovalLedgerError("Filled quantity must be zero or one")
+    if normalized == "FILLED" and filled_quantity != 1:
+        raise ApprovalLedgerError("Filled status requires one filled share")
+    return append_event(
+        proposal_id,
+        "BROKER_STATUS",
+        {"status": normalized, "filled_quantity": filled_quantity},
+        path=path,
+        at=at,
+    )
+
+
+def halt_proposal(
+    proposal_id: str,
+    reason: str,
+    *,
+    path: Path = DEFAULT_LEDGER,
+    at: Optional[str] = None,
+) -> Dict[str, Any]:
+    current = proposal_status(proposal_id, path)
+    if current["state"] in {"REJECTED", "EXPIRED", "HALTED"}:
+        raise ApprovalLedgerError("Proposal is already terminal")
+    return append_event(proposal_id, "HALTED", {"reason": reason}, path=path, at=at)
