@@ -10,13 +10,15 @@ persistence, fresh quote sourcing, signing, and reconciliation are verified.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
 
-from approval_ledger import DEFAULT_LEDGER, ApprovalLedgerError, proposal_status
+from approval_ledger import DEFAULT_LEDGER, ApprovalLedgerError, proposal_digest as stored_proposal_digest, proposal_status
 
 SNAPTRADE_PLACE_ORDER_URL = "https://api.snaptrade.com/trade/place"
 UUID_RE = re.compile(
@@ -112,6 +114,14 @@ def validate_order_body(body: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def execution_order_digest(order_body: Dict[str, Any]) -> str:
+    normalized = validate_order_body(order_body)
+    reviewable = dict(normalized)
+    reviewable.pop("account_id", None)
+    payload = json.dumps(reviewable, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def build_dry_run(order_body: Dict[str, Any]) -> DryRunEnvelope:
     normalized = validate_order_body(order_body)
     # Never log or return a real brokerage account identifier.
@@ -138,6 +148,13 @@ def build_approved_dry_run(
         raise ExecutionBridgeError("Approval ledger validation failed") from exc
     if status.get("state") != "APPROVED":
         raise ExecutionBridgeError("Proposal is not approved in the local audit ledger")
+    try:
+        approved_digest = stored_proposal_digest(normalized["client_order_id"], ledger_path)
+    except ApprovalLedgerError as exc:
+        raise ExecutionBridgeError("Approved proposal digest is unavailable") from exc
+    actual_digest = execution_order_digest(normalized)
+    if not hmac.compare_digest(approved_digest, actual_digest):
+        raise ExecutionBridgeError("Approved proposal no longer matches the order body")
     return build_dry_run(normalized)
 
 
