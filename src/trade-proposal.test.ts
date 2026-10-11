@@ -15,8 +15,8 @@ const portfolio: BotPortfolioState = {
   shares: 1, cash: 7000, buyingPower: 7000, currency: "CAD", openOrders: [],
 };
 const expiry = new Date(Date.now() + 60_000).toISOString();
-if (!createTradeProposal(decision, portfolio, 3000, expiry)) throw new Error("valid proposal rejected");
-if (createTradeProposal(decision, { ...portfolio, buyingPower: 3500 }, 3000, expiry)) throw new Error("cash buffer bypassed");
-if (createTradeProposal(decision, { ...portfolio, openOrders: [{ symbol: "CSU.TO", side: "BUY", quantity: 1, status: "OPEN" }] }, 3000, expiry)) throw new Error("open-order guard bypassed");
-if (createTradeProposal({ ...decision, action: "HOLD", quantity: 0 }, portfolio, 3000, expiry)) throw new Error("HOLD generated proposal");
+if (!createTradeProposal("11111111-1111-4111-8111-111111111111", decision, portfolio, 3000, expiry)) throw new Error("valid proposal rejected");
+if (createTradeProposal("22222222-2222-4222-8222-222222222222", decision, { ...portfolio, buyingPower: 3500 }, 3000, expiry)) throw new Error("cash buffer bypassed");
+if (createTradeProposal("33333333-3333-4333-8333-333333333333", decision, { ...portfolio, openOrders: [{ symbol: "CSU.TO", side: "BUY", quantity: 1, status: "OPEN" }] }, 3000, expiry)) throw new Error("open-order guard bypassed");
+if (createTradeProposal("44444444-4444-4444-8444-444444444444", { ...decision, action: "HOLD", quantity: 0 }, portfolio, 3000, expiry)) throw new Error("HOLD generated proposal");
 console.log("trade proposal safety checks passed");
