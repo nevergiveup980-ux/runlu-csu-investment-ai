@@ -4,6 +4,7 @@ import { accountDiagnostics, toBotPortfolio, validateSnapshot, type BrokerAccoun
 import { createTradeProposal } from "./trade-proposal";
 import { buildDecisionReviewPacket } from "./review-packet";
 import { scoreScoutCandidate } from "./scout";
+import { buildScoutUniverse, type StockCatalogRow } from "./scout-universe";
 
 type Candle = {
   datetime: string;
@@ -242,6 +243,24 @@ async function twelve(env: Env, interval: string): Promise<Candle[]> {
   return twelveSymbol(env, "CSU:TSX", interval);
 }
 
+async function twelveTsxUniverse(env: Env) {
+  if (!env.TWELVE_DATA_API_KEY) throw new Error("Market data source not configured");
+  const url = new URL("https://api.twelvedata.com/stocks");
+  url.searchParams.set("exchange", "TSX");
+  url.searchParams.set("country", "Canada");
+  url.searchParams.set("type", "Common Stock");
+
+  const response = await fetch(url, {
+    headers: { Authorization: `apikey ${env.TWELVE_DATA_API_KEY}` },
+  });
+  const data: any = await response.json();
+  if (!response.ok || !Array.isArray(data?.data)) {
+    throw new Error(data?.message || "TSX stock catalog unavailable");
+  }
+  return buildScoutUniverse(data.data as StockCatalogRow[]);
+}
+
+
 function parseOpenOrders(url: URL): OpenOrder[] {
   const raw = url.searchParams.get("openOrders");
   if (!raw) return [];
@@ -461,6 +480,35 @@ export default {
           notice: proposal
             ? "Realtime-lite candidate created for human review. No brokerage order has been submitted."
             : "Realtime-lite scan produced no executable proposal.",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json", "cache-control": "no-store" },
+        });
+      }
+
+      if (url.pathname === "/api/scout/universe" && request.method === "GET") {
+        const secret = (env as Env & { CSU_SNAPSHOT_TOKEN?: string }).CSU_SNAPSHOT_TOKEN;
+        if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
+          return new Response(JSON.stringify({ error: "Private Scout universe unavailable" }), {
+            status: 403,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        const universe = await twelveTsxUniverse(env);
+        return new Response(JSON.stringify({
+          product: "RUNLU Scout V1",
+          mode: "RESEARCH_UNIVERSE_ONLY",
+          exchange: "TSX",
+          primaryFocus: "CSU.TO",
+          count: universe.length,
+          universe,
+          policy: {
+            researchOnly: true,
+            tradeEligible: false,
+            automaticTrading: false,
+          },
+          notice: "Catalog discovery only. Membership in this universe grants no trading authority.",
         }), {
           status: 200,
           headers: { "content-type": "application/json", "cache-control": "no-store" },
