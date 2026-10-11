@@ -366,7 +366,7 @@ export default {
         if (!candles.length) return json({ error: "No market data returned" }, 404, "no-store");
         const ind = indicators(candles);
         const decision = buildBotDecision(ind, portfolio);
-        const proposal = createTradeProposal(decision, portfolio, Number(body.limitPriceCAD), body.expiresAt);
+        const proposal = createTradeProposal(crypto.randomUUID(), decision, portfolio, Number(body.limitPriceCAD), body.expiresAt);
         return new Response(JSON.stringify({
           symbol: "CSU.TO",
           mode: "HUMAN_REVIEW_REQUIRED",
