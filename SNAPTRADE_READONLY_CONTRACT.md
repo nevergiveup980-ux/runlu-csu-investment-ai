@@ -8,8 +8,8 @@ CSU Bot V2 deliberately does not own broker credentials. The already-working Web
 {
   "provider": "SnapTrade / Webull Canada",
   "currency": "CAD",
-  "cash": 9895.53,
-  "buyingPower": 7045.53,
+  "cash": 10000.00,
+  "buyingPower": 7000.00,
   "positions": [
     {
       "symbol": "CSU.TO",
@@ -23,7 +23,7 @@ CSU Bot V2 deliberately does not own broker credentials. The already-working Web
       "symbol": "CSU.TO",
       "side": "BUY",
       "quantity": 1,
-      "limitPrice": 2850,
+      "limitPrice": 3000,
       "status": "OPEN"
     }
   ],
@@ -34,7 +34,7 @@ CSU Bot V2 deliberately does not own broker credentials. The already-working Web
 }
 ```
 
-The example numbers document the verified checkpoint only. Runtime data must come from the reader.
+The example numbers are synthetic and exist only to illustrate the snapshot shape. Runtime data must come from the reader.
 
 ## Rules
 
