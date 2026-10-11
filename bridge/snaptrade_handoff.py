@@ -8,10 +8,13 @@ V2's read-only simulation endpoint.
 """
 import json
 import os
+import tempfile
 import urllib.request
 import urllib.error
+from pathlib import Path
 
 BOT_URL = os.getenv("CSU_BOT_ACCOUNT_PREVIEW_URL", "http://127.0.0.1:8787/api/bot/account-preview")
+SNAPSHOT_CACHE = Path(".csu-private") / "latest-snapshot.json"
 
 
 def sanitize_snapshot(raw):
@@ -59,6 +62,25 @@ def sanitize_snapshot(raw):
         "transactions": transactions,
         "fetchedAt": raw.get("fetchedAt") or raw.get("fetched_at"),
     }
+
+
+def cache_sanitized_snapshot(raw, path=SNAPSHOT_CACHE):
+    """Atomically cache only the sanitized snapshot in the gitignored private area."""
+    safe = sanitize_snapshot(raw)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix="snapshot-", suffix=".json", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(safe, handle, separators=(",", ":"), ensure_ascii=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, path)
+    finally:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
+    return safe
 
 
 def _auth_headers():
