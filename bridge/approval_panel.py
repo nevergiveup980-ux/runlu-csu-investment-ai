@@ -455,6 +455,17 @@ function renderResearch(x){{
  const send=document.createElement("button");send.textContent="WRITE BACK / 写回研究档案";send.style.marginTop="10px";
  send.onclick=async()=>{{try{{const packet=JSON.parse(ta.value);if(packet.symbol!==x.symbol)throw new Error("Symbol mismatch");const result=await api("/api/scout/research-writeback",packet);alert("Research saved. Awaiting explicit user decision.");ta.value="";await load()}}catch(e){{alert("Research writeback failed: "+e.message)}}}};
  imp.append(send);c.append(imp);
+
+ if(x.research_status==="ASSISTANT_COMPLETE_AWAITING_USER" && x.research_digest){{
+   const h=document.createElement("div");h.className="k";h.style.marginTop="16px";h.textContent="Final research verdict / 最终研究结论";c.append(h);
+   const verdicts=document.createElement("div");verdicts.className="row";
+   [["PASS","PASS / 放弃"],["WATCH","WATCH / 观察"],["APPROVED","APPROVED UNIVERSE / 通过研究"]].forEach(([value,label])=>{{
+     const b=document.createElement("button");b.textContent=label;
+     b.onclick=async()=>{{const msg="Confirm "+value+" for "+x.symbol+"? This records a research verdict only. It does NOT place or authorize a broker order.";if(!confirm(msg))return;try{{await api("/api/scout/finalize-research",{{symbol:x.symbol,research_digest:x.research_digest,user_confirmed:true,final_decision:value}});await load()}}catch(e){{alert("Finalization failed: "+e.message)}}}};
+     verdicts.append(b);
+   }});
+   c.append(verdicts);
+ }}
  return c
 }}
 async function load(){{try{{const d=await api("/api/pending");const root=document.getElementById("cards");root.replaceChildren();if(!d.proposals.length){{const m=document.createElement("div");m.className="muted";m.textContent="Waiting for a proposal…";root.append(m)}}else d.proposals.forEach(x=>root.append(renderCard(x)))}}catch(e){{document.getElementById("cards").textContent=e.message}}
