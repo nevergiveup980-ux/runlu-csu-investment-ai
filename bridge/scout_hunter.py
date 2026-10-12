@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+from local_url import LocalUrlError, require_loopback_http
 from scout_registry import DEFAULT_REGISTRY, ranked_candidates, record_scan
 from snaptrade_handoff import _auth_headers
 
@@ -71,11 +72,15 @@ def _atomic_json(path: Path, value: Dict[str, Any]) -> None:
 
 
 def _request_json(url: str, *, payload: Dict[str, Any] | None = None, timeout: int = 30) -> Dict[str, Any]:
+    try:
+        safe_url = require_loopback_http(url)
+    except LocalUrlError as exc:
+        raise ScoutHunterError(str(exc)) from exc
     if payload is None:
-        request = urllib.request.Request(url, headers=_auth_headers(), method="GET")
+        request = urllib.request.Request(safe_url, headers=_auth_headers(), method="GET")
     else:
         request = urllib.request.Request(
-            url,
+            safe_url,
             data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
             headers=_auth_headers(),
             method="POST",
@@ -136,7 +141,10 @@ def load_or_refresh_universe(
     try:
         cached = json.loads(Path(cache_path).read_text(encoding="utf-8"))
         fetched = _parse_time(cached.get("fetchedAt") or "")
-        if current - fetched <= timedelta(hours=max_age_hours) and isinstance(cached.get("universe"), list):
+        age = current - fetched
+        if age < timedelta(minutes=-5):
+            raise ScoutHunterError("Cached Scout universe timestamp is unexpectedly in the future")
+        if age <= timedelta(hours=max_age_hours) and isinstance(cached.get("universe"), list):
             return cached
     except (OSError, json.JSONDecodeError, ScoutHunterError):
         pass
