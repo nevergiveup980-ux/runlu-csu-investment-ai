@@ -1,33 +1,40 @@
-import assert from "node:assert/strict";
 import { normalizeWatchInterval, normalizeWatchRequest, normalizeWatchSymbols } from "./scout-watch-feed";
 
-assert.deepEqual(
+const equal = (actual: unknown, expected: unknown, message: string) => {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(message);
+};
+
+const throws = (fn: () => unknown, needle: string) => {
+  let blocked = false;
+  try {
+    fn();
+  } catch (error) {
+    blocked = String(error).includes(needle);
+  }
+  if (!blocked) throw new Error(`Expected failure containing: ${needle}`);
+};
+
+equal(
   normalizeWatchSymbols(["aaa:tsx", "BBB:TSX", "aaa:tsx"]),
   ["AAA:TSX", "BBB:TSX"],
+  "Scout Watch should normalize and dedupe TSX symbols",
 );
 
-assert.throws(
-  () => normalizeWatchSymbols(["CSU:TSX"]),
-  /dedicated realtime bot/,
-);
-
-assert.throws(
-  () => normalizeWatchSymbols(["NYSE:IBM"]),
-  /TICKER:TSX/,
-);
-
-assert.throws(
+throws(() => normalizeWatchSymbols(["CSU:TSX"]), "dedicated realtime bot");
+throws(() => normalizeWatchSymbols(["NYSE:IBM"]), "TICKER:TSX");
+throws(
   () => normalizeWatchSymbols(["A:TSX", "B:TSX", "C:TSX", "D:TSX", "E:TSX", "F:TSX"]),
-  /1-5/,
+  "1-5",
 );
 
-assert.equal(normalizeWatchInterval("1min"), "1min");
-assert.equal(normalizeWatchInterval("5min"), "5min");
-assert.equal(normalizeWatchInterval("bogus"), "5min");
+if (normalizeWatchInterval("1min") !== "1min") throw new Error("1min should remain 1min");
+if (normalizeWatchInterval("5min") !== "5min") throw new Error("5min should remain 5min");
+if (normalizeWatchInterval("bogus") !== "5min") throw new Error("Unknown interval should fail safe to 5min");
 
-assert.deepEqual(
+equal(
   normalizeWatchRequest({ symbols: ["AAA:TSX"], interval: "1min" }),
   { symbols: ["AAA:TSX"], interval: "1min" },
+  "Scout Watch request normalization mismatch",
 );
 
 console.log("scout-watch-feed safety tests passed");
