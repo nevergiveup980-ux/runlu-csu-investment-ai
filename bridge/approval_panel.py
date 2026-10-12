@@ -28,7 +28,7 @@ from approval_ledger import (
     proposal_status,
     reject_proposal,
 )
-from scout_registry import DEFAULT_REGISTRY, ScoutRegistryError, record_assistant_research
+from scout_registry import DEFAULT_REGISTRY, ScoutRegistryError, apply_joint_review, record_assistant_research
 from scout_research_writeback import DEFAULT_ARCHIVE
 
 from execution_bridge import (
@@ -332,6 +332,38 @@ class PanelState:
             "broker_submission_enabled": False,
         }
 
+    def finalize_scout_research(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        symbol = str(body.get("symbol") or "").upper()
+        decision = str(body.get("final_decision") or "").upper()
+        digest = str(body.get("research_digest") or "")
+        if not symbol.endswith(":TSX") or symbol == "CSU:TSX":
+            raise ApprovalPanelError("Scout finalization requires a non-CSU TSX symbol")
+        if decision not in {"PASS", "WATCH", "APPROVED"}:
+            raise ApprovalPanelError("Scout final decision must be PASS, WATCH, or APPROVED")
+        if body.get("user_confirmed") is not True:
+            raise ApprovalPanelError("Explicit user confirmation is required")
+        try:
+            row = apply_joint_review(
+                symbol,
+                {
+                    "user_confirmed": True,
+                    "final_decision": decision,
+                    "research_digest": digest,
+                },
+                self.scout_registry_path,
+            )
+        except ScoutRegistryError as exc:
+            raise ApprovalPanelError(str(exc)) from exc
+        return {
+            "symbol": symbol,
+            "stage": row.get("stage"),
+            "research_status": row.get("researchStatus"),
+            "final_decision": decision,
+            "realtime_eligible": bool(row.get("realtimeEligible")),
+            "trade_eligible": False,
+            "broker_submission_enabled": False,
+        }
+
     def approve(self, proposal_id: str) -> Dict[str, Any]:
         item = self._pending.get(proposal_id)
         if not item:
@@ -529,6 +561,8 @@ def make_handler(state: PanelState, session_token: str, port: int):
                     self._json({"proposal": state.reject_review(str(body.get("proposal_id") or ""))})
                 elif path == "/api/scout/research-writeback":
                     self._json({"research": state.writeback_scout_research(body)})
+                elif path == "/api/scout/finalize-research":
+                    self._json({"research": state.finalize_scout_research(body)})
                 elif path == "/api/register":
                     self._json({"proposal": state.register(body)})
                 elif path == "/api/approve":
