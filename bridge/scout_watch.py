@@ -17,6 +17,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
+from zoneinfo import ZoneInfo
 
 from scout_registry import DEFAULT_REGISTRY, _read, flag_material_recheck
 
@@ -24,6 +25,9 @@ STATE_FILE = Path(".csu-private") / "scout-watch-state.json"
 DEFAULT_POLL_SECONDS = 300
 MIN_POLL_SECONDS = 60
 MAX_POLL_SECONDS = 300
+TORONTO = ZoneInfo("America/Toronto")
+MARKET_START = (9, 30)
+MARKET_END = (16, 10)
 
 
 class ScoutWatchError(RuntimeError):
@@ -38,6 +42,14 @@ def bounded_poll_seconds(value: Any) -> int:
     if seconds < MIN_POLL_SECONDS or seconds > MAX_POLL_SECONDS:
         raise ScoutWatchError("Scout Watch polling interval must be between 60 and 300 seconds")
     return seconds
+
+
+def market_monitor_window(now: datetime | None = None) -> bool:
+    current = (now or datetime.now(TORONTO)).astimezone(TORONTO)
+    if current.weekday() >= 5:
+        return False
+    hm = (current.hour, current.minute)
+    return MARKET_START <= hm <= MARKET_END
 
 
 def watch_symbols(registry_path: Path = DEFAULT_REGISTRY) -> List[str]:
@@ -146,15 +158,41 @@ def process_observations(
     return results
 
 
+def run_once(observer, *, now: datetime | None = None) -> Dict[str, Any]:
+    if not market_monitor_window(now):
+        return {
+            "ran": False,
+            "reason": "Outside weekday TSX monitoring window",
+            "tradeEligible": False,
+            "brokerSubmissionEnabled": False,
+        }
+    symbols = watch_symbols()
+    if not symbols:
+        return {
+            "ran": False,
+            "reason": "No finalized WATCH/APPROVED_UNIVERSE symbols",
+            "tradeEligible": False,
+            "brokerSubmissionEnabled": False,
+        }
+    observations = observer(symbols)
+    results = process_observations(observations)
+    return {
+        "ran": True,
+        "symbolsEligible": len(symbols),
+        "observationsProcessed": len(results),
+        "results": results,
+        "tradeEligible": False,
+        "brokerSubmissionEnabled": False,
+    }
+
+
 def run_forever(observer) -> None:
     poll_seconds = bounded_poll_seconds(os.getenv("RUNLU_SCOUT_WATCH_POLL_SECONDS", DEFAULT_POLL_SECONDS))
-    print(f"RUNLU Scout Watch: every {poll_seconds}s")
+    print(f"RUNLU Scout Watch: every {poll_seconds}s during weekday TSX hours")
     print("Broker submission: DISABLED")
     while True:
-        symbols = watch_symbols()
         try:
-            observations = observer(symbols)
-            print(json.dumps(process_observations(observations), ensure_ascii=False))
+            print(json.dumps(run_once(observer), ensure_ascii=False))
         except Exception as exc:
-            print(json.dumps({"error": str(exc), "brokerSubmissionEnabled": False}, ensure_ascii=False))
+            print(json.dumps({"ran": False, "error": str(exc), "brokerSubmissionEnabled": False}, ensure_ascii=False))
         time.sleep(poll_seconds)
