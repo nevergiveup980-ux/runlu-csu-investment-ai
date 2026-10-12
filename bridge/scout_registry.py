@@ -14,6 +14,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
+from scout_research_writeback import (
+    DEFAULT_ARCHIVE,
+    ResearchWritebackError,
+    archive_research_result,
+    validate_research_result,
+)
+
 DEFAULT_REGISTRY = Path(".csu-private") / "scout-registry.json"
 
 
@@ -80,12 +87,53 @@ def record_scan(scan_result: Dict[str, Any], path: Path = DEFAULT_REGISTRY) -> D
             "marketDataAsOf": candidate.get("marketDataAsOf"),
             "lastScannedAt": _now(),
             "research": previous.get("research"),
+            "researchDraft": previous.get("researchDraft"),
+            "researchStatus": previous.get("researchStatus") or "PENDING",
             "realtimeEligible": bool(previous.get("realtimeEligible", False)),
             "tradeEligible": False,
         }
     registry["updatedAt"] = _now()
     _write(registry, path)
     return registry
+
+
+def record_assistant_research(
+    symbol: str,
+    packet: Dict[str, Any],
+    path: Path = DEFAULT_REGISTRY,
+    archive_path: Path = DEFAULT_ARCHIVE,
+) -> Dict[str, Any]:
+    registry = _read(path)
+    key = str(symbol or "").upper()
+    candidate = registry["candidates"].get(key)
+    if not candidate:
+        raise ScoutRegistryError("Unknown Scout candidate")
+    if candidate.get("stage") == "PASS":
+        raise ScoutRegistryError("PASS candidate cannot receive new assistant research without re-opening")
+
+    try:
+        validated = validate_research_result(packet, candidate)
+        archived = archive_research_result(validated, archive_path)
+    except ResearchWritebackError as exc:
+        raise ScoutRegistryError(str(exc)) from exc
+
+    candidate["researchDraft"] = {
+        "archiveVersion": archived["version"],
+        "digest": archived["digest"],
+        "completedAt": archived["completedAt"],
+        "research": archived["research"],
+        "evidence": archived["evidence"],
+        "assistantResearchComplete": True,
+        "userConfirmed": False,
+        "finalDecision": None,
+    }
+    candidate["researchStatus"] = "ASSISTANT_COMPLETE_AWAITING_USER"
+    candidate["stage"] = "RESEARCH_REQUIRED"
+    candidate["realtimeEligible"] = False
+    candidate["tradeEligible"] = False
+    registry["updatedAt"] = _now()
+    _write(registry, path)
+    return candidate
 
 
 def apply_joint_review(
@@ -99,23 +147,30 @@ def apply_joint_review(
     if not candidate:
         raise ScoutRegistryError("Unknown Scout candidate")
 
-    if review.get("research_complete") is not True:
-        raise ScoutRegistryError("Research must be complete")
-    if review.get("assistant_research_complete") is not True:
-        raise ScoutRegistryError("Assistant research must be complete")
+    draft = candidate.get("researchDraft")
+    if not isinstance(draft, dict) or draft.get("assistantResearchComplete") is not True:
+        raise ScoutRegistryError("Completed assistant research must be written back before joint review")
+    if candidate.get("researchStatus") != "ASSISTANT_COMPLETE_AWAITING_USER":
+        raise ScoutRegistryError("Candidate is not awaiting user confirmation")
     if review.get("user_confirmed") is not True:
         raise ScoutRegistryError("Explicit user confirmation is required")
+
+    expected_digest = str(draft.get("digest") or "")
+    supplied_digest = str(review.get("research_digest") or "")
+    if supplied_digest and supplied_digest != expected_digest:
+        raise ScoutRegistryError("Joint review research digest does not match archived research")
 
     decision = str(review.get("final_decision") or "").upper()
     if decision not in {"PASS", "WATCH", "APPROVED"}:
         raise ScoutRegistryError("Final decision must be PASS, WATCH, or APPROVED")
 
-    thesis = str(review.get("thesis") or "").strip()
-    bear_case = str(review.get("bear_case") or "").strip()
-    invalidation = str(review.get("invalidation") or "").strip()
-    risks = [str(x).strip() for x in (review.get("key_risks") or []) if str(x).strip()]
+    research = draft.get("research") or {}
+    thesis = str(research.get("bull_case") or "").strip()
+    bear_case = str(research.get("bear_case") or "").strip()
+    invalidation = str(research.get("invalidation_condition") or "").strip()
+    risks = [str(x).strip() for x in (research.get("key_risks") or []) if str(x).strip()]
     if not thesis or not bear_case or not invalidation or not risks:
-        raise ScoutRegistryError("Thesis, bear case, key risks, and invalidation are required")
+        raise ScoutRegistryError("Archived research is missing thesis, bear case, risks, or invalidation")
 
     stage = {
         "PASS": "PASS",
@@ -127,14 +182,18 @@ def apply_joint_review(
     candidate["tradeEligible"] = False
     candidate["research"] = {
         "completedAt": _now(),
+        "researchDigest": expected_digest,
+        "archiveVersion": draft.get("archiveVersion"),
         "thesis": thesis,
         "bearCase": bear_case,
         "keyRisks": risks,
         "invalidation": invalidation,
+        "evidence": draft.get("evidence") or {},
         "assistantResearchComplete": True,
         "userConfirmed": True,
         "finalDecision": decision,
     }
+    candidate["researchStatus"] = "FINALIZED"
     registry["updatedAt"] = _now()
     _write(registry, path)
     return candidate
