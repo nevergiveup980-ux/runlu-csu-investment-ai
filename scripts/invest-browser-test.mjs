@@ -24,8 +24,13 @@ try{
  await preview.close();
  await page.locator('#watchSymbol').fill('MSFT');
  await page.locator('#watchName').fill('Microsoft');
+ await page.locator('#watchPrice').fill('350.50');
+ await page.locator('#watchStage').selectOption('WAITING');
+ await page.locator('#watchReason').fill('Watch valuation before deciding');
  await page.locator('#addWatch').click();
  assert.match(await page.locator('#watchlistItems').innerText(),/MSFT/);
+ assert.match(await page.locator('#watchlistItems').innerText(),/350.50/);
+ assert.match(await page.locator('#watchlistItems').innerText(),/Watch valuation before deciding/);
  assert.equal(await page.locator('#holdingCount').innerText(),'0');
  await page.locator('#newSymbol').fill('AAPL');
  await page.locator('#newName').fill('Apple Inc.');
