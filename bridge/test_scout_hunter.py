@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import scout_hunter
-from scout_hunter import ScoutHunterError, choose_next_batch, load_or_refresh_universe, run_cycle
+from scout_hunter import ScoutHunterError, _request_json, choose_next_batch, load_or_refresh_universe, run_cycle
 
 
 class ScoutHunterTests(unittest.TestCase):
@@ -72,6 +72,25 @@ class ScoutHunterTests(unittest.TestCase):
             value = load_or_refresh_universe(cache_path=self.cache, now=now)
         self.assertEqual(len(value["universe"]), 4)
         fetch.assert_not_called()
+
+    def test_private_token_is_never_sent_to_remote_hunter_url(self):
+        with patch.object(scout_hunter, "_auth_headers") as auth,              patch.object(scout_hunter.urllib.request, "urlopen") as urlopen:
+            with self.assertRaises(ScoutHunterError):
+                _request_json("https://evil.example.com/api/scout/scan", payload={"symbols": ["AAA:TSX"]})
+        auth.assert_not_called()
+        urlopen.assert_not_called()
+
+    def test_future_catalog_timestamp_forces_refresh(self):
+        future = self.catalog()
+        future["fetchedAt"] = "2099-01-02T12:00:00Z"
+        self.cache.write_text(json.dumps(future), encoding="utf-8")
+        now = datetime(2099, 1, 1, 12, 0, tzinfo=timezone.utc)
+        fresh = self.catalog()
+        fresh["fetchedAt"] = "2099-01-01T12:00:00Z"
+        with patch.object(scout_hunter, "fetch_universe", return_value=fresh) as fetch:
+            value = load_or_refresh_universe(cache_path=self.cache, now=now)
+        fetch.assert_called_once()
+        self.assertEqual(value["fetchedAt"], "2099-01-01T12:00:00Z")
 
     def test_cycle_scans_small_batch_and_never_grants_trading(self):
         catalog = self.catalog()
