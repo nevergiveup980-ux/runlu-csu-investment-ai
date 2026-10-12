@@ -89,6 +89,7 @@ def record_scan(scan_result: Dict[str, Any], path: Path = DEFAULT_REGISTRY) -> D
             "research": previous.get("research"),
             "researchDraft": previous.get("researchDraft"),
             "researchStatus": previous.get("researchStatus") or "PENDING",
+            "decisionHistory": list(previous.get("decisionHistory") or []),
             "realtimeEligible": bool(previous.get("realtimeEligible", False)),
             "tradeEligible": False,
         }
@@ -194,6 +195,17 @@ def apply_joint_review(
         "finalDecision": decision,
     }
     candidate["researchStatus"] = "FINALIZED"
+    history = candidate.setdefault("decisionHistory", [])
+    history.append({
+        "decidedAt": _now(),
+        "finalDecision": decision,
+        "stage": stage,
+        "researchDigest": expected_digest,
+        "archiveVersion": draft.get("archiveVersion"),
+        "userConfirmed": True,
+        "tradeEligible": False,
+    })
+    candidate["decisionHistory"] = history[-20:]
     registry["updatedAt"] = _now()
     _write(registry, path)
     return candidate
