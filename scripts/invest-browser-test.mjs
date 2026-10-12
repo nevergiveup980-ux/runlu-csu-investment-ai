@@ -16,7 +16,8 @@ try{
  });
  await preview.goto('https://runlu-preview.github.io/');
  await preview.locator('#previewNotice').waitFor({state:'visible'});
- assert.match(await preview.locator('#marketStatus').innerText(),/Preview mode/);
+ assert.match(await preview.locator('#marketStatus').innerText(),/Add your first holding/);
+ assert.match(await preview.locator('#welcome').innerText(),/Welcome to RUNLU INVEST/);
  assert.equal(await preview.locator('#price').innerText(),'—');
  await preview.close();
  await page.locator('#newSymbol').fill('AAPL');
