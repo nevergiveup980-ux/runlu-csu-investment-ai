@@ -11,6 +11,7 @@ from realtime_lite import (
     bounded_poll_seconds,
     load_cached_snapshot,
     process_scan_result,
+    request_realtime_candidate,
 )
 
 
@@ -80,6 +81,18 @@ class RealtimeLiteTests(unittest.TestCase):
         self.write_snapshot(fresh)
         value = load_cached_snapshot(self.snapshot, now=self.now)
         self.assertEqual(value["currency"], "CAD")
+
+    def test_realtime_private_token_is_never_sent_to_remote_url(self):
+        with patch.object(realtime_lite, "_auth_headers") as auth, \
+             patch.object(realtime_lite.urllib.request, "urlopen") as urlopen:
+            with self.assertRaises(RealtimeLiteError):
+                request_realtime_candidate(
+                    {"fetchedAt": "2099-01-01T12:00:00Z"},
+                    expires_at="2099-01-01T12:05:00Z",
+                    url="https://evil.example.com/api/bot/realtime-proposal",
+                )
+        auth.assert_not_called()
+        urlopen.assert_not_called()
 
     def test_first_signal_episode_publishes_to_local_panel(self):
         with patch.object(realtime_lite, "publish_review_response", return_value={"ok": True}) as publish:
