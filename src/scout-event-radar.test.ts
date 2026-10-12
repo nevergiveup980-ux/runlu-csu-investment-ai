@@ -1,4 +1,4 @@
-import { classifyPressRelease, normalizeMaterialEvent } from "./scout-event-radar";
+import { classifyPressRelease, normalizeEventSymbols, normalizeMaterialEvent } from "./scout-event-radar";
 
 const expectEqual = (actual: unknown, expected: unknown, message: string) => {
   if (actual !== expected) throw new Error(`${message}: got ${String(actual)} expected ${String(expected)}`);
@@ -62,3 +62,17 @@ if (normalizeMaterialEvent({ id: "", title: "Missing id" }) !== null) {
 }
 
 console.log("scout-event-radar safety tests passed");
+
+
+const symbols = normalizeEventSymbols(["aaa:tsx", "BBB:TSX", "aaa:tsx"]);
+if (JSON.stringify(symbols) !== JSON.stringify(["AAA:TSX", "BBB:TSX"])) {
+  throw new Error("Event Radar should normalize and dedupe TSX symbols");
+}
+
+let rejected = false;
+try { normalizeEventSymbols(["CSU:TSX"]); } catch { rejected = true; }
+if (!rejected) throw new Error("Event Radar must keep CSU on the dedicated workflow");
+
+rejected = false;
+try { normalizeEventSymbols(["A:TSX", "B:TSX", "C:TSX", "D:TSX"]); } catch { rejected = true; }
+if (!rejected) throw new Error("Event Radar must cap each provider cycle at three symbols");
