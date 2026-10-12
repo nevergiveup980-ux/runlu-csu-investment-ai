@@ -108,6 +108,8 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertIn("RUNLU_SCOUT_RESEARCH_PACKET", page)
         self.assertIn("IMPORT RESEARCH RESULT", page)
         self.assertIn("/api/scout/research-writeback", page)
+        self.assertIn("/api/scout/finalize-research", page)
+        self.assertIn("APPROVED UNIVERSE", page)
 
     def test_scout_research_cards_are_sanitized_and_never_tradeable(self):
         self.scout_report.write_text(json.dumps({
@@ -228,6 +230,66 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertFalse(result["user_confirmed"])
         self.assertFalse(result["trade_eligible"])
         self.assertFalse(result["broker_submission_enabled"])
+
+    def test_scout_finalization_requires_archived_research_and_remains_non_tradeable(self):
+        registry = Path(self.tmp.name) / "scout-registry-final.json"
+        archive = Path(self.tmp.name) / "scout-research-archive-final.json"
+        state = PanelState(self.ledger, self.scout_report, registry, archive)
+        candidate = record_scan({
+            "mode": "DISCOVERY_RESEARCH_ONLY",
+            "candidates": [{
+                "symbol": "AAA:TSX",
+                "score": 80,
+                "tier": "PRIORITY_RESEARCH",
+                "reasons": ["synthetic"],
+                "riskFlags": ["synthetic risk"],
+                "marketDataAsOf": "2026-10-10",
+            }],
+        }, registry)["candidates"]["AAA:TSX"]
+        packet = build_result_template(candidate)
+        packet["assistantResearchComplete"] = True
+        packet["research"].update({
+            "business_model": "Business",
+            "financial_quality": "Financials",
+            "valuation": "Valuation",
+            "industry_and_competition": "Industry",
+            "management_and_governance": "Management",
+            "recent_news_and_catalysts": "News",
+            "bull_case": "Bull",
+            "bear_case": "Bear",
+            "key_risks": ["Risk"],
+            "what_could_make_us_wrong": "Wrong",
+            "invalidation_condition": "Invalidation",
+            "sources": [
+                {"type": "REGULATORY_FILING", "title": "Filing", "url": "https://example.com/f2", "publishedAt": "2026-01-01T00:00:00Z", "notes": "Primary"},
+                {"type": "COMPANY_IR", "title": "IR", "url": "https://example.com/i2", "publishedAt": "2026-01-02T00:00:00Z", "notes": "Primary"},
+                {"type": "NEWS", "title": "News", "url": "https://example.com/n2", "publishedAt": "2026-01-03T00:00:00Z", "notes": "Independent"},
+            ],
+        })
+        saved = state.writeback_scout_research(packet)
+        result = state.finalize_scout_research({
+            "symbol": "AAA:TSX",
+            "research_digest": saved["research_digest"],
+            "user_confirmed": True,
+            "final_decision": "WATCH",
+        })
+        self.assertEqual(result["stage"], "WATCH")
+        self.assertEqual(result["research_status"], "FINALIZED")
+        self.assertTrue(result["realtime_eligible"])
+        self.assertFalse(result["trade_eligible"])
+        self.assertFalse(result["broker_submission_enabled"])
+
+    def test_scout_finalization_rejects_missing_digest(self):
+        registry = Path(self.tmp.name) / "empty-registry.json"
+        archive = Path(self.tmp.name) / "empty-archive.json"
+        state = PanelState(self.ledger, self.scout_report, registry, archive)
+        with self.assertRaises(ApprovalPanelError):
+            state.finalize_scout_research({
+                "symbol": "AAA:TSX",
+                "research_digest": "",
+                "user_confirmed": True,
+                "final_decision": "WATCH",
+            })
 
     def test_register_card_never_surfaces_private_account_data(self):
         card = self.state.register(self.packet())
