@@ -26,21 +26,25 @@ export type ScoutMaterialEvent = {
 };
 
 const RULES: Array<[ScoutMaterialEventType, RegExp[]]> = [
-  ["GUIDANCE", [/guidance/i, /outlook/i, /forecast/i]],
-  ["EARNINGS", [/earnings/i, /financial results?/i, /quarterly results?/i, /annual results?/i]],
-  ["M_AND_A", [/acquisition/i, /acquire[sd]?/i, /merger/i, /strategic combination/i, /takeover/i]],
-  ["MANAGEMENT_CHANGE", [/chief executive/i, /chief financial/i, /ceo/i, /cfo/i, /resign(?:s|ed|ation)?/i, /appoint(?:s|ed|ment)?/i]],
-  ["REGULATORY", [/regulator(?:y)?/i, /competition bureau/i, /securities commission/i, /approval/i, /investigation/i]],
-  ["CAPITAL_RAISE", [/offering/i, /financing/i, /private placement/i, /public offering/i, /convertible/i]],
-  ["DIVIDEND_CHANGE", [/dividend/i, /distribution/i]],
-  ["CREDIT_EVENT", [/credit rating/i, /downgrade/i, /default/i, /refinanc(?:e|ing)/i, /debt covenant/i]],
-  ["LITIGATION", [/lawsuit/i, /litigation/i, /legal proceedings?/i, /class action/i]],
+  ["GUIDANCE", [/\bguidance\b/i, /\boutlook\b/i, /\bforecast\b/i]],
+  ["EARNINGS", [/\bearnings\b/i, /\bfinancial results?\b/i, /\bquarterly results?\b/i, /\bannual results?\b/i]],
+  ["M_AND_A", [/\bacquisition\b/i, /\bacquire[sd]?\b/i, /\bmerger\b/i, /\bstrategic combination\b/i, /\btakeover\b/i]],
+  ["MANAGEMENT_CHANGE", [/\bchief executive\b/i, /\bchief financial\b/i, /\bceo\b/i, /\bcfo\b/i, /\bresign(?:s|ed|ation)?\b/i, /\bappoint(?:s|ed|ment)?\b/i]],
+  ["REGULATORY", [/\bregulator(?:y)?\b/i, /\bcompetition bureau\b/i, /\bsecurities commission\b/i, /\bapproval\b/i, /\binvestigation\b/i]],
+  ["CAPITAL_RAISE", [/\boffering\b/i, /\bfinancing\b/i, /\bprivate placement\b/i, /\bpublic offering\b/i, /\bconvertible\b/i]],
+  ["DIVIDEND_CHANGE", [/\bdividend\b/i, /\bdistribution\b/i]],
+  ["CREDIT_EVENT", [/\bcredit rating\b/i, /\bdowngrade\b/i, /\bdefault\b/i, /\brefinanc(?:e|ing)\b/i, /\bdebt covenant\b/i]],
+  ["LITIGATION", [/\blawsuit\b/i, /\blitigation\b/i, /\blegal proceedings?\b/i, /\bclass action\b/i]],
 ];
 
-const text = (value: unknown) => String(value ?? "").replace(/<[^>]*>/g, " ").replace(/s+/g, " ").trim();
+const text = (value: unknown) =>
+  String(value ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 export function classifyPressRelease(item: PressReleaseLike): ScoutMaterialEventType {
-  const haystack = `${text(item.title)} ${text(item.body)}`;
+  const haystack = \`\${text(item.title)} \${text(item.body)}\`;
   for (const [kind, patterns] of RULES) {
     if (patterns.some((pattern) => pattern.test(haystack))) return kind;
   }
@@ -60,7 +64,6 @@ export function normalizeMaterialEvent(item: PressReleaseLike): ScoutMaterialEve
     sourceType: "OFFICIAL_PRESS_RELEASE",
   };
 }
-
 
 export function normalizeEventSymbols(raw: unknown): string[] {
   if (!Array.isArray(raw) || raw.length < 1 || raw.length > 3) {
