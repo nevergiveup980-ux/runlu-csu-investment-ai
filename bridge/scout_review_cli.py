@@ -9,7 +9,7 @@ import argparse
 import json
 from pathlib import Path
 
-from scout_registry import apply_joint_review, ranked_candidates, record_scan
+from scout_registry import _read, apply_joint_review, ranked_candidates, record_scan
 
 
 def main() -> None:
@@ -20,6 +20,10 @@ def main() -> None:
     imp.add_argument("file", help="Scout scan JSON file")
 
     sub.add_parser("list")
+
+    template = sub.add_parser("decision-template")
+    template.add_argument("symbol")
+    template.add_argument("--output")
 
     review = sub.add_parser("review")
     review.add_argument("symbol")
@@ -35,6 +39,30 @@ def main() -> None:
 
     if args.command == "list":
         print(json.dumps(ranked_candidates(), indent=2, ensure_ascii=False))
+        return
+
+    if args.command == "decision-template":
+        key = args.symbol.upper()
+        candidate = _read()["candidates"].get(key)
+        if not candidate:
+            raise SystemExit("Unknown Scout candidate")
+        draft = candidate.get("researchDraft") or {}
+        if candidate.get("researchStatus") != "ASSISTANT_COMPLETE_AWAITING_USER" or not draft.get("digest"):
+            raise SystemExit("Candidate does not have completed assistant research awaiting user confirmation")
+        value = {
+            "symbol": key,
+            "research_digest": draft["digest"],
+            "user_confirmed": False,
+            "final_decision": None,
+            "allowed_values": ["PASS", "WATCH", "APPROVED"],
+            "tradeEligible": False,
+        }
+        rendered = json.dumps(value, indent=2, ensure_ascii=False) + "\n"
+        if args.output:
+            Path(args.output).expanduser().write_text(rendered, encoding="utf-8")
+            print(args.output)
+        else:
+            print(rendered, end="")
         return
 
     if args.command == "review":
