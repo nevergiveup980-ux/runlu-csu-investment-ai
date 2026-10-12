@@ -110,6 +110,7 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertIn("/api/scout/research-writeback", page)
         self.assertIn("/api/scout/finalize-research", page)
         self.assertIn("APPROVED UNIVERSE", page)
+        self.assertIn("RECHECK REQUIRED", page)
 
     def test_scout_research_cards_are_sanitized_and_never_tradeable(self):
         self.scout_report.write_text(json.dumps({
@@ -188,6 +189,41 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertFalse(cards[0]["user_confirmed"])
         self.assertEqual(cards[0]["archive_version"], 3)
         self.assertFalse(cards[0]["trade_eligible"])
+
+    def test_scout_queue_surfaces_recheck_alert_without_trade_authority(self):
+        registry = Path(self.tmp.name) / "scout-registry-recheck.json"
+        archive = Path(self.tmp.name) / "scout-research-archive-recheck.json"
+        self.scout_report.write_text(json.dumps({
+            "researchCards": [{
+                "symbol": "AAA:TSX",
+                "scout": {"score": 90, "tier": "PRIORITY_RESEARCH", "stage": "RESEARCH_REQUIRED", "reasons": [], "riskFlags": []},
+                "researchAgenda": {"questions": [], "evidenceRequirements": {"minimumSources": 3}},
+                "authority": {"tradeEligible": False},
+            }]
+        }), encoding="utf-8")
+        registry.write_text(json.dumps({
+            "version": 1,
+            "candidates": {
+                "AAA:TSX": {
+                    "symbol": "AAA:TSX",
+                    "stage": "RECHECK_REQUIRED",
+                    "researchStatus": "RECHECK_REQUIRED",
+                    "recheck": {
+                        "kind": "RUNLU_SCOUT_RECHECK",
+                        "reasons": ["EVENT:EARNINGS"],
+                        "tradeEligible": False,
+                        "brokerSubmissionEnabled": False,
+                    },
+                    "tradeEligible": False,
+                }
+            },
+        }), encoding="utf-8")
+        state = PanelState(self.ledger, self.scout_report, registry, archive)
+        card = state.scout_research_cards()[0]
+        self.assertEqual(card["research_status"], "RECHECK_REQUIRED")
+        self.assertEqual(card["recheck"]["reasons"], ["EVENT:EARNINGS"])
+        self.assertFalse(card["trade_eligible"])
+        self.assertFalse(card["broker_submission_enabled"])
 
     def test_scout_research_writeback_records_assistant_work_but_not_user_approval(self):
         registry = Path(self.tmp.name) / "scout-registry.json"
