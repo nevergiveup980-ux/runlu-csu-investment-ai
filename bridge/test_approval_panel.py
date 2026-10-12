@@ -106,6 +106,8 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertIn("RESEARCH ONLY", page)
         self.assertIn("COPY RESEARCH PACKET", page)
         self.assertIn("RUNLU_SCOUT_RESEARCH_PACKET", page)
+        self.assertIn("IMPORT RESEARCH RESULT", page)
+        self.assertIn("/api/scout/research-writeback", page)
 
     def test_scout_research_cards_are_sanitized_and_never_tradeable(self):
         self.scout_report.write_text(json.dumps({
@@ -139,6 +141,51 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertFalse(card["automatic_promotion"])
         self.assertNotIn("account_id", card)
         self.assertNotIn("cash", card)
+
+    def test_scout_queue_merges_current_registry_research_status(self):
+        registry = Path(self.tmp.name) / "scout-registry.json"
+        archive = Path(self.tmp.name) / "scout-research-archive.json"
+        self.scout_report.write_text(json.dumps({
+            "researchCards": [{
+                "symbol": "AAA:TSX",
+                "scout": {
+                    "score": 81,
+                    "tier": "PRIORITY_RESEARCH",
+                    "stage": "RESEARCH_REQUIRED",
+                    "reasons": ["near support"],
+                    "riskFlags": [],
+                },
+                "researchAgenda": {
+                    "questions": ["What could make us wrong?"],
+                    "evidenceRequirements": {"minimumSources": 3},
+                },
+                "authority": {"tradeEligible": False},
+            }]
+        }), encoding="utf-8")
+        Path(registry).write_text(json.dumps({
+            "version": 1,
+            "candidates": {
+                "AAA:TSX": {
+                    "symbol": "AAA:TSX",
+                    "stage": "RESEARCH_REQUIRED",
+                    "researchStatus": "ASSISTANT_COMPLETE_AWAITING_USER",
+                    "researchDraft": {
+                        "digest": "b" * 64,
+                        "archiveVersion": 3,
+                        "assistantResearchComplete": True,
+                        "userConfirmed": False,
+                    },
+                    "tradeEligible": False,
+                }
+            },
+        }), encoding="utf-8")
+        state = PanelState(self.ledger, self.scout_report, registry, archive)
+        cards = state.scout_research_cards()
+        self.assertEqual(cards[0]["research_status"], "ASSISTANT_COMPLETE_AWAITING_USER")
+        self.assertTrue(cards[0]["assistant_research_complete"])
+        self.assertFalse(cards[0]["user_confirmed"])
+        self.assertEqual(cards[0]["archive_version"], 3)
+        self.assertFalse(cards[0]["trade_eligible"])
 
     def test_scout_research_writeback_records_assistant_work_but_not_user_approval(self):
         registry = Path(self.tmp.name) / "scout-registry.json"
