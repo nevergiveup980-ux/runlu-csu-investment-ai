@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
+from scout_recheck import build_recheck_packet, evaluate_recheck
 from scout_research_writeback import (
     DEFAULT_ARCHIVE,
     ResearchWritebackError,
@@ -77,6 +78,7 @@ def record_scan(scan_result: Dict[str, Any], path: Path = DEFAULT_REGISTRY) -> D
             raise ScoutRegistryError("Scout registry accepts TSX candidates only")
         previous = saved.get(symbol) or {}
         stage = previous.get("stage") or "RESEARCH_REQUIRED"
+        previous_score = previous.get("latestScore")
         saved[symbol] = {
             "symbol": symbol,
             "stage": stage,
@@ -92,10 +94,58 @@ def record_scan(scan_result: Dict[str, Any], path: Path = DEFAULT_REGISTRY) -> D
             "decisionHistory": list(previous.get("decisionHistory") or []),
             "realtimeEligible": bool(previous.get("realtimeEligible", False)),
             "tradeEligible": False,
+            "recheck": previous.get("recheck"),
         }
+
+        current_row = saved[symbol]
+        evaluation = evaluate_recheck(current_row, previous_score=previous_score)
+        if evaluation["recheckRequired"]:
+            packet = build_recheck_packet(current_row, evaluation)
+            current_row["recheck"] = packet
+            current_row["previousStageBeforeRecheck"] = stage
+            current_row["stage"] = "RECHECK_REQUIRED"
+            current_row["researchStatus"] = "RECHECK_REQUIRED"
+            current_row["realtimeEligible"] = False
+            current_row["tradeEligible"] = False
     registry["updatedAt"] = _now()
     _write(registry, path)
     return registry
+
+
+def flag_material_recheck(
+    symbol: str,
+    *,
+    events=(),
+    previous_price: float | None = None,
+    current_price: float | None = None,
+    path: Path = DEFAULT_REGISTRY,
+) -> Dict[str, Any]:
+    registry = _read(path)
+    key = str(symbol or "").upper()
+    candidate = registry["candidates"].get(key)
+    if not candidate:
+        raise ScoutRegistryError("Unknown Scout candidate")
+
+    evaluation = evaluate_recheck(
+        candidate,
+        previous_score=candidate.get("latestScore"),
+        previous_price=previous_price,
+        current_price=current_price,
+        events=events,
+    )
+    if not evaluation["recheckRequired"]:
+        return candidate
+
+    previous_stage = candidate.get("stage")
+    candidate["recheck"] = build_recheck_packet(candidate, evaluation)
+    candidate["previousStageBeforeRecheck"] = previous_stage
+    candidate["stage"] = "RECHECK_REQUIRED"
+    candidate["researchStatus"] = "RECHECK_REQUIRED"
+    candidate["realtimeEligible"] = False
+    candidate["tradeEligible"] = False
+    registry["updatedAt"] = _now()
+    _write(registry, path)
+    return candidate
 
 
 def record_assistant_research(
@@ -111,6 +161,7 @@ def record_assistant_research(
         raise ScoutRegistryError("Unknown Scout candidate")
     if candidate.get("stage") == "PASS":
         raise ScoutRegistryError("PASS candidate cannot receive new assistant research without re-opening")
+    is_recheck = candidate.get("stage") == "RECHECK_REQUIRED"
 
     try:
         validated = validate_research_result(packet, candidate)
@@ -130,6 +181,10 @@ def record_assistant_research(
     }
     candidate["researchStatus"] = "ASSISTANT_COMPLETE_AWAITING_USER"
     candidate["stage"] = "RESEARCH_REQUIRED"
+    if is_recheck:
+        candidate["researchDraft"]["recheckOfDigest"] = (
+            (candidate.get("recheck") or {}).get("previousResearchDigest")
+        )
     candidate["realtimeEligible"] = False
     candidate["tradeEligible"] = False
     registry["updatedAt"] = _now()
