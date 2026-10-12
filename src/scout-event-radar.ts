@@ -60,3 +60,22 @@ export function normalizeMaterialEvent(item: PressReleaseLike): ScoutMaterialEve
     sourceType: "OFFICIAL_PRESS_RELEASE",
   };
 }
+
+
+export function normalizeEventSymbols(raw: unknown): string[] {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 3) {
+    throw new Error("Scout Event Radar requires 1-3 TSX symbols");
+  }
+  const out: string[] = [];
+  for (const value of raw) {
+    const symbol = String(value || "").trim().toUpperCase();
+    if (!/^[A-Z0-9.\-]{1,12}:TSX$/.test(symbol)) {
+      throw new Error("Scout Event Radar accepts TICKER:TSX symbols only");
+    }
+    if (symbol === "CSU:TSX") {
+      throw new Error("CSU uses the dedicated CSU research workflow");
+    }
+    if (!out.includes(symbol)) out.push(symbol);
+  }
+  return out;
+}
