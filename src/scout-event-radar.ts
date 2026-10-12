@@ -44,7 +44,7 @@ const text = (value: unknown) =>
     .trim();
 
 export function classifyPressRelease(item: PressReleaseLike): ScoutMaterialEventType {
-  const haystack = \`\${text(item.title)} \${text(item.body)}\`;
+  const haystack = text(item.title) + " " + text(item.body);
   for (const [kind, patterns] of RULES) {
     if (patterns.some((pattern) => pattern.test(haystack))) return kind;
   }
