@@ -160,7 +160,28 @@ class ScoutRegistryTests(unittest.TestCase):
         self.assertTrue(row["realtimeEligible"])
         self.assertFalse(row["tradeEligible"])
         self.assertEqual(row["research"]["researchDigest"], draft["digest"])
+        self.assertEqual(len(row["decisionHistory"]), 1)
+        self.assertEqual(row["decisionHistory"][0]["finalDecision"], "APPROVED")
+        self.assertFalse(row["decisionHistory"][0]["tradeEligible"])
         self.assertEqual(execution_eligible_symbols(self.path), [])
+
+    def test_rescan_preserves_final_decision_history(self):
+        draft = self.seed_completed_research()["researchDraft"]
+        finalized = apply_joint_review(
+            "SYNTH:TSX",
+            {
+                "user_confirmed": True,
+                "final_decision": "WATCH",
+                "research_digest": draft["digest"],
+            },
+            self.path,
+        )
+        self.assertEqual(len(finalized["decisionHistory"]), 1)
+        rescanned = record_scan(self.scan(), self.path)["candidates"]["SYNTH:TSX"]
+        self.assertEqual(rescanned["stage"], "WATCH")
+        self.assertEqual(rescanned["researchStatus"], "FINALIZED")
+        self.assertEqual(len(rescanned["decisionHistory"]), 1)
+        self.assertEqual(rescanned["decisionHistory"][0]["finalDecision"], "WATCH")
 
     def test_ranked_candidates_orders_by_latest_score(self):
         scan = self.scan()
