@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from approval_panel import ApprovalPanelError, PanelState, _html
+from scout_registry import record_scan
+from scout_research_writeback import build_result_template
 
 
 class ApprovalPanelStateTests(unittest.TestCase):
@@ -137,6 +139,48 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertFalse(card["automatic_promotion"])
         self.assertNotIn("account_id", card)
         self.assertNotIn("cash", card)
+
+    def test_scout_research_writeback_records_assistant_work_but_not_user_approval(self):
+        registry = Path(self.tmp.name) / "scout-registry.json"
+        archive = Path(self.tmp.name) / "scout-research-archive.json"
+        state = PanelState(self.ledger, self.scout_report, registry, archive)
+        candidate = record_scan({
+            "mode": "DISCOVERY_RESEARCH_ONLY",
+            "candidates": [{
+                "symbol": "AAA:TSX",
+                "score": 80,
+                "tier": "PRIORITY_RESEARCH",
+                "reasons": ["synthetic"],
+                "riskFlags": ["synthetic risk"],
+                "marketDataAsOf": "2026-10-10",
+            }],
+        }, registry)["candidates"]["AAA:TSX"]
+        packet = build_result_template(candidate)
+        packet["assistantResearchComplete"] = True
+        packet["research"].update({
+            "business_model": "Business",
+            "financial_quality": "Financials",
+            "valuation": "Valuation",
+            "industry_and_competition": "Industry",
+            "management_and_governance": "Management",
+            "recent_news_and_catalysts": "News",
+            "bull_case": "Bull",
+            "bear_case": "Bear",
+            "key_risks": ["Risk"],
+            "what_could_make_us_wrong": "Wrong",
+            "invalidation_condition": "Invalidation",
+            "sources": [
+                {"type": "REGULATORY_FILING", "title": "Filing", "url": "https://example.com/f", "publishedAt": "2026-01-01T00:00:00Z", "notes": "Primary"},
+                {"type": "COMPANY_IR", "title": "IR", "url": "https://example.com/i", "publishedAt": "2026-01-02T00:00:00Z", "notes": "Primary"},
+                {"type": "NEWS", "title": "News", "url": "https://example.com/n", "publishedAt": "2026-01-03T00:00:00Z", "notes": "Independent"},
+            ],
+        })
+        result = state.writeback_scout_research(packet)
+        self.assertEqual(result["research_status"], "ASSISTANT_COMPLETE_AWAITING_USER")
+        self.assertTrue(result["assistant_research_complete"])
+        self.assertFalse(result["user_confirmed"])
+        self.assertFalse(result["trade_eligible"])
+        self.assertFalse(result["broker_submission_enabled"])
 
     def test_register_card_never_surfaces_private_account_data(self):
         card = self.state.register(self.packet())
