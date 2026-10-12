@@ -345,3 +345,40 @@ into the daily Top-5 display and shows:
 
 Research writeback never records user confirmation and never creates a broker
 order.
+
+
+## Explicit final verdict in the localhost panel
+
+Once a Scout candidate reaches
+`ASSISTANT_COMPLETE_AWAITING_USER`, the local Research Queue reveals three
+research-verdict controls:
+
+- **PASS / 放弃**
+- **WATCH / 观察**
+- **APPROVED UNIVERSE / 通过研究**
+
+These are research classifications, not order approvals.
+
+The panel sends the selected verdict together with the exact archived research
+SHA-256 digest to:
+
+`POST /api/scout/finalize-research`
+
+Finalization requires:
+
+- a non-CSU TSX Scout candidate;
+- completed archived assistant research;
+- `user_confirmed = true`;
+- PASS, WATCH, or APPROVED;
+- the exact 64-character archived research digest.
+
+A missing or mismatched digest fails closed.
+
+The result remains:
+
+`trade_eligible = false`
+
+`broker_submission_enabled = false`
+
+WATCH and APPROVED_UNIVERSE may be marked eligible for future non-executing
+realtime observation, but neither is connected to broker execution in Scout V1.
