@@ -12,6 +12,7 @@ import tempfile
 import urllib.request
 import urllib.error
 from pathlib import Path
+from local_url import LocalUrlError, require_loopback_http
 
 BOT_URL = os.getenv("CSU_BOT_ACCOUNT_PREVIEW_URL", "http://127.0.0.1:8787/api/bot/account-preview")
 SNAPSHOT_CACHE = Path(".csu-private") / "latest-snapshot.json"
@@ -93,11 +94,15 @@ def _auth_headers():
     }
 
 
-def forward_snapshot(raw):
+def forward_snapshot(raw, url=BOT_URL):
     safe = sanitize_snapshot(raw)
     payload = json.dumps(safe).encode("utf-8")
+    try:
+        safe_url = require_loopback_http(url)
+    except LocalUrlError as exc:
+        raise RuntimeError(str(exc)) from exc
     req = urllib.request.Request(
-        BOT_URL,
+        safe_url,
         data=payload,
         headers=_auth_headers(),
         method="POST",
