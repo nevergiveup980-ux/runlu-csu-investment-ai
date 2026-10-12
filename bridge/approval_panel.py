@@ -28,6 +28,9 @@ from approval_ledger import (
     proposal_status,
     reject_proposal,
 )
+from scout_registry import DEFAULT_REGISTRY, ScoutRegistryError, record_assistant_research
+from scout_research_writeback import DEFAULT_ARCHIVE
+
 from execution_bridge import (
     ExecutionBridgeError,
     build_approved_dry_run,
@@ -70,9 +73,17 @@ def _safe_review(value: Any) -> Dict[str, Any]:
 
 
 class PanelState:
-    def __init__(self, ledger_path: Path = DEFAULT_LEDGER, scout_report_path: Path = SCOUT_DAILY_REPORT):
+    def __init__(
+        self,
+        ledger_path: Path = DEFAULT_LEDGER,
+        scout_report_path: Path = SCOUT_DAILY_REPORT,
+        scout_registry_path: Path = DEFAULT_REGISTRY,
+        scout_archive_path: Path = DEFAULT_ARCHIVE,
+    ):
         self.ledger_path = ledger_path
         self.scout_report_path = Path(scout_report_path)
+        self.scout_registry_path = Path(scout_registry_path)
+        self.scout_archive_path = Path(scout_archive_path)
         self._pending: Dict[str, Dict[str, Any]] = {}
         self._reviews: Dict[str, Dict[str, Any]] = {}
 
@@ -277,6 +288,32 @@ class PanelState:
             })
         return safe
 
+    def writeback_scout_research(self, packet: Dict[str, Any]) -> Dict[str, Any]:
+        symbol = str(packet.get("symbol") or "").upper()
+        if not symbol.endswith(":TSX") or symbol == "CSU:TSX":
+            raise ApprovalPanelError("Scout research writeback requires a non-CSU TSX symbol")
+        try:
+            row = record_assistant_research(
+                symbol,
+                packet,
+                self.scout_registry_path,
+                self.scout_archive_path,
+            )
+        except ScoutRegistryError as exc:
+            raise ApprovalPanelError(str(exc)) from exc
+        draft = row.get("researchDraft") or {}
+        return {
+            "symbol": symbol,
+            "stage": row.get("stage"),
+            "research_status": row.get("researchStatus"),
+            "research_digest": draft.get("digest"),
+            "archive_version": draft.get("archiveVersion"),
+            "assistant_research_complete": True,
+            "user_confirmed": False,
+            "trade_eligible": False,
+            "broker_submission_enabled": False,
+        }
+
     def approve(self, proposal_id: str) -> Dict[str, Any]:
         item = self._pending.get(proposal_id)
         if not item:
@@ -465,6 +502,8 @@ def make_handler(state: PanelState, session_token: str, port: int):
                     self._json(state.approve_review(str(body.get("proposal_id") or "")))
                 elif path == "/api/reject-review":
                     self._json({"proposal": state.reject_review(str(body.get("proposal_id") or ""))})
+                elif path == "/api/scout/research-writeback":
+                    self._json({"research": state.writeback_scout_research(body)})
                 elif path == "/api/register":
                     self._json({"proposal": state.register(body)})
                 elif path == "/api/approve":
@@ -473,7 +512,7 @@ def make_handler(state: PanelState, session_token: str, port: int):
                     self._json({"proposal": state.reject(str(body.get("proposal_id") or ""))})
                 else:
                     self._json({"error": "Not found"}, 404)
-            except (ApprovalPanelError, ApprovalLedgerError, ExecutionBridgeError) as exc:
+            except (ApprovalPanelError, ApprovalLedgerError, ExecutionBridgeError, ScoutRegistryError) as exc:
                 self._json({"error": str(exc)}, 409)
 
         def do_PUT(self):
