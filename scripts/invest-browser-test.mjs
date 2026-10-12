@@ -45,6 +45,7 @@ try{
  await page.locator('#backupFile').setInputFiles(backupPath);
  await page.locator('#holdingTitle').getByText('Apple Inc. · AAPL').waitFor();
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
+ assert.match(await page.locator('#backupStatus').innerText(),/Backup restored and verified on this device/);
  await page.reload();
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
  // Invalid import must not overwrite an existing portfolio or memory.
@@ -55,6 +56,7 @@ try{
  const errorDialog=await rejected;
  assert.match(errorDialog.message(),/Import failed:/);
  await errorDialog.accept();
+ assert.match(await page.locator('#backupStatus').innerText(),/Import failed:/);
  const after=await page.evaluate(()=>localStorage.getItem('runlu-invest-v01'));
  assert.equal(after,before,'invalid backup must preserve existing local data');
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
