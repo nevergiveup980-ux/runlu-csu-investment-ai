@@ -158,7 +158,9 @@ def apply_joint_review(
 
     expected_digest = str(draft.get("digest") or "")
     supplied_digest = str(review.get("research_digest") or "")
-    if supplied_digest and supplied_digest != expected_digest:
+    if not supplied_digest:
+        raise ScoutRegistryError("Joint review must include the archived research digest")
+    if supplied_digest != expected_digest:
         raise ScoutRegistryError("Joint review research digest does not match archived research")
 
     decision = str(review.get("final_decision") or "").upper()
