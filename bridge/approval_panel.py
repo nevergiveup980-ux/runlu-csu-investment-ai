@@ -342,6 +342,8 @@ class PanelState:
             raise ApprovalPanelError("Scout final decision must be PASS, WATCH, or APPROVED")
         if body.get("user_confirmed") is not True:
             raise ApprovalPanelError("Explicit user confirmation is required")
+        if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest.lower()):
+            raise ApprovalPanelError("A valid archived research digest is required")
         try:
             row = apply_joint_review(
                 symbol,
