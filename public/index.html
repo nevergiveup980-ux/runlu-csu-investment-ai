@@ -26,6 +26,7 @@
 
 <div class="card section">
  <div class="muted">Holdings</div>
+ <div id="welcome" class="safe" style="display:none;padding:14px 0">Welcome to RUNLU INVEST. Add a company or fund below to start your personal portfolio. Record your reasons, expectations and reviews over time. No brokerage connection needed.</div>
  <div class="holdings" id="holdings"></div>
  <div class="form">
    <input id="newSymbol" placeholder="Symbol e.g. AAPL">
@@ -83,6 +84,7 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));return true}
 const selected=()=>state.holdings.find(h=>h.id===state.selected);
 function render(){
  $('holdingCount').textContent=state.holdings.length;
+ $('welcome').style.display=state.holdings.length?'none':'block';
  const h=selected(); $('selectedSymbol').textContent=h?.symbol||'—';
  const mem=state.memories.filter(m=>m.holdingId===state.selected); $('memoryCount').textContent=mem.length;
  const decisions=mem.filter(m=>['BUY','ADD','REDUCE','SELL'].includes(m.action));
@@ -130,7 +132,7 @@ function renderLessons(mem,reviewed){
  box.innerHTML=lines.map(x=>'• '+escapeHtml(x)).join('<br>');
 }
 async function loadMarket(){
- const h=selected();if(!h)return;
+ const h=selected();if(!h){$('price').textContent=$('rsi').textContent=$('stance').textContent='—';$('marketStatus').textContent='Add your first holding to begin.';return;}
  if(STATIC_PREVIEW){$('price').textContent=$('rsi').textContent=$('stance').textContent='—';$('marketStatus').textContent='Preview mode · live market data is not connected. Your local investment notes still work.';return;}
  $('marketStatus').textContent='Loading '+h.symbol+' research…';
  $('price').textContent=$('rsi').textContent=$('stance').textContent='—';
