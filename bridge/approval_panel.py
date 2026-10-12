@@ -39,6 +39,7 @@ HOST = "127.0.0.1"
 DEFAULT_PORT = 8775
 MAX_BODY = 65536
 SESSION_FILE = Path(".csu-private") / "approval-session-token"
+SCOUT_DAILY_REPORT = Path(".csu-private") / "scout-daily-top5.json"
 
 
 class ApprovalPanelError(RuntimeError):
@@ -69,8 +70,9 @@ def _safe_review(value: Any) -> Dict[str, Any]:
 
 
 class PanelState:
-    def __init__(self, ledger_path: Path = DEFAULT_LEDGER):
+    def __init__(self, ledger_path: Path = DEFAULT_LEDGER, scout_report_path: Path = SCOUT_DAILY_REPORT):
         self.ledger_path = ledger_path
+        self.scout_report_path = Path(scout_report_path)
         self._pending: Dict[str, Dict[str, Any]] = {}
         self._reviews: Dict[str, Dict[str, Any]] = {}
 
@@ -240,6 +242,41 @@ class PanelState:
         cards.extend(self.card(pid) for pid in list(self._pending))
         return cards
 
+    def scout_research_cards(self):
+        try:
+            raw = json.loads(self.scout_report_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return []
+        cards = raw.get("researchCards") if isinstance(raw, dict) else None
+        if not isinstance(cards, list):
+            return []
+
+        safe = []
+        for card in cards[:5]:
+            if not isinstance(card, dict):
+                continue
+            symbol = str(card.get("symbol") or "").upper()
+            if not symbol.endswith(":TSX") or symbol == "CSU:TSX":
+                continue
+            scout = card.get("scout") if isinstance(card.get("scout"), dict) else {}
+            agenda = card.get("researchAgenda") if isinstance(card.get("researchAgenda"), dict) else {}
+            authority = card.get("authority") if isinstance(card.get("authority"), dict) else {}
+            safe.append({
+                "symbol": symbol,
+                "score": scout.get("score"),
+                "tier": scout.get("tier"),
+                "stage": scout.get("stage") or "RESEARCH_REQUIRED",
+                "reasons": [str(x) for x in (scout.get("reasons") or [])][:8],
+                "risk_flags": [str(x) for x in (scout.get("riskFlags") or [])][:8],
+                "questions": [str(x) for x in (agenda.get("questions") or [])][:12],
+                "research_required": True,
+                "trade_eligible": False,
+                "broker_submission_enabled": False,
+                "automatic_promotion": False,
+                "source_policy": agenda.get("evidenceRequirements") or {},
+            })
+        return safe
+
     def approve(self, proposal_id: str) -> Dict[str, Any]:
         item = self._pending.get(proposal_id)
         if not item:
@@ -284,6 +321,9 @@ button.primary{{background:#171717;color:white;border-color:#171717}}button:disa
 <h1>CSU Trade Approval / 交易审批</h1>
 <div class="banner"><b>LOCAL REVIEW ONLY</b> · 当前页面不会向券商提交订单。批准只记录本机审核结果；模拟订单卡片仍只生成 dry-run。</div>
 <div id="cards"><div class="muted">Waiting for a proposal…</div></div>
+<h1 style="font-size:24px;margin-top:34px">Scout Research Queue / 调研候选</h1>
+<div class="banner"><b>RESEARCH ONLY</b> · Scout 候选不能在这里获得交易权限，必须先完成咱俩的联合调研。</div>
+<div id="research"><div class="muted">No Scout research queue yet.</div></div>
 </main><script>
 const SESSION={token};
 const esc=x=>String(x??"—");
@@ -309,7 +349,19 @@ function renderCard(x){{
  no.onclick=async()=>{{if(!confirm("Reject this proposal?"))return;try{{await api(reviewOnly?"/api/reject-review":"/api/reject",{{proposal_id:x.proposal_id}});await load()}}catch(e){{alert(e.message)}}}};
  row.append(yes,no);c.append(row);return c
 }}
-async function load(){{try{{const d=await api("/api/pending");const root=document.getElementById("cards");root.replaceChildren();if(!d.proposals.length){{const m=document.createElement("div");m.className="muted";m.textContent="Waiting for a proposal…";root.append(m)}}else d.proposals.forEach(x=>root.append(renderCard(x)))}}catch(e){{document.getElementById("cards").textContent=e.message}}}}
+function renderResearch(x){{
+ const c=document.createElement("div");c.className="card";
+ const title=document.createElement("div");title.className="action";title.textContent=x.symbol+" · "+esc(x.score);c.append(title);
+ const g=document.createElement("div");g.className="grid";
+ g.append(cell("Tier",x.tier),cell("Stage",x.stage),cell("Trade Eligible","NO"),cell("Auto Promotion","NO"));c.append(g);
+ if(x.reasons?.length){{const h=document.createElement("div");h.className="k";h.style.marginTop="14px";h.textContent="Why Scout found it";c.append(h);const ul=document.createElement("ul");x.reasons.forEach(r=>{{const li=document.createElement("li");li.textContent=esc(r);ul.append(li)}});c.append(ul)}}
+ if(x.risk_flags?.length){{const h=document.createElement("div");h.className="k";h.textContent="Risk flags";c.append(h);const ul=document.createElement("ul");x.risk_flags.forEach(r=>{{const li=document.createElement("li");li.textContent=esc(r);ul.append(li)}});c.append(ul)}}
+ if(x.questions?.length){{const d=document.createElement("details");const s=document.createElement("summary");s.textContent="Research questions / 调研问题";d.append(s);const ul=document.createElement("ul");x.questions.forEach(q=>{{const li=document.createElement("li");li.textContent=esc(q);ul.append(li)}});d.append(ul);c.append(d)}}
+ return c
+}}
+async function load(){{try{{const d=await api("/api/pending");const root=document.getElementById("cards");root.replaceChildren();if(!d.proposals.length){{const m=document.createElement("div");m.className="muted";m.textContent="Waiting for a proposal…";root.append(m)}}else d.proposals.forEach(x=>root.append(renderCard(x)))}}catch(e){{document.getElementById("cards").textContent=e.message}}
+ try{{const d=await api("/api/scout/research");const root=document.getElementById("research");root.replaceChildren();if(!d.candidates.length){{const m=document.createElement("div");m.className="muted";m.textContent="No Scout research queue yet.";root.append(m)}}else d.candidates.forEach(x=>root.append(renderResearch(x)))}}catch(e){{document.getElementById("research").textContent=e.message}}
+}}
 load();setInterval(load,2500);
 </script></body></html>"""
 
@@ -382,6 +434,17 @@ def make_handler(state: PanelState, session_token: str, port: int):
                     self._json({"error": "Forbidden"}, 403)
                     return
                 self._json({"proposals": state.list_cards(), "broker_submission_enabled": False})
+                return
+            if path == "/api/scout/research":
+                if not self._api_auth():
+                    self._json({"error": "Forbidden"}, 403)
+                    return
+                self._json({
+                    "candidates": state.scout_research_cards(),
+                    "research_only": True,
+                    "trade_eligible": False,
+                    "broker_submission_enabled": False,
+                })
                 return
             self._json({"error": "Not found"}, 404)
 
