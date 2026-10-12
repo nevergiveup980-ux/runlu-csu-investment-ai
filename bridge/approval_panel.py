@@ -28,8 +28,9 @@ from approval_ledger import (
     proposal_status,
     reject_proposal,
 )
-from scout_registry import DEFAULT_REGISTRY, ScoutRegistryError, apply_joint_review, record_assistant_research
+from scout_registry import DEFAULT_REGISTRY, ScoutRegistryError, apply_joint_review, flag_material_recheck, record_assistant_research
 from scout_research_writeback import DEFAULT_ARCHIVE
+from scout_independent_news import IndependentNewsError, mark_alert_escalated
 
 from execution_bridge import (
     ExecutionBridgeError,
@@ -333,15 +334,76 @@ class PanelState:
                 "link": str(alert.get("link") or "")[:1000],
                 "published_at": alert.get("publishedAt"),
                 "publisher": str(alert.get("publisher") or "")[:120] or None,
-                "status": "NEWS_REVIEW_REQUIRED",
+                "status": str(alert.get("status") or "NEWS_REVIEW_REQUIRED"),
                 "detected_at": alert.get("detectedAt"),
                 "source_type": "INDEPENDENT_NEWS_RSS",
                 "automatic_recheck": False,
-                "user_confirmed_material": False,
+                "user_confirmed_material": bool(alert.get("userConfirmedMaterial", False)),
                 "trade_eligible": False,
                 "broker_submission_enabled": False,
             })
         return list(reversed(safe))
+
+    def escalate_scout_news(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        symbol = str(body.get("symbol") or "").upper()
+        alert_id = str(body.get("alert_id") or "")
+        if body.get("user_confirmed_material") is not True:
+            raise ApprovalPanelError("Explicit user confirmation is required before news escalation")
+        if not symbol.endswith(":TSX") or symbol == "CSU:TSX":
+            raise ApprovalPanelError("News escalation requires a non-CSU TSX symbol")
+        try:
+            raw = json.loads(self.scout_news_alerts_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ApprovalPanelError("Independent-news alert archive is unavailable") from exc
+        alerts = raw.get("alerts") if isinstance(raw, dict) else None
+        if not isinstance(alerts, list):
+            raise ApprovalPanelError("Independent-news alert archive is invalid")
+
+        alert = next(
+            (
+                item for item in alerts
+                if isinstance(item, dict)
+                and str(item.get("id") or "") == alert_id
+                and str(item.get("symbol") or "").upper() == symbol
+            ),
+            None,
+        )
+        if alert is None:
+            raise ApprovalPanelError("Independent-news alert was not found")
+
+        category = str(alert.get("category") or "INDEPENDENT_NEWS").upper()
+        event_type = category if category in {
+            "EARNINGS", "GUIDANCE", "M_AND_A", "MANAGEMENT_CHANGE", "REGULATORY",
+            "CAPITAL_RAISE", "DIVIDEND_CHANGE", "CREDIT_EVENT", "LITIGATION",
+        } else "MATERIAL_NEWS"
+
+        try:
+            row = flag_material_recheck(
+                symbol,
+                events=[{
+                    "id": alert_id,
+                    "type": event_type,
+                    "title": str(alert.get("title") or "")[:240],
+                    "datetime": alert.get("publishedAt"),
+                    "sourceType": "INDEPENDENT_NEWS_RSS",
+                }],
+                path=self.scout_registry_path,
+            )
+            saved = mark_alert_escalated(alert_id, alert_path=self.scout_news_alerts_path)
+        except (ScoutRegistryError, IndependentNewsError) as exc:
+            raise ApprovalPanelError(str(exc)) from exc
+
+        return {
+            "symbol": symbol,
+            "alert_id": alert_id,
+            "alert_status": saved.get("status"),
+            "stage": row.get("stage"),
+            "research_status": row.get("researchStatus"),
+            "user_confirmed_material": True,
+            "automatic_recheck": False,
+            "trade_eligible": False,
+            "broker_submission_enabled": False,
+        }
 
     def writeback_scout_research(self, packet: Dict[str, Any]) -> Dict[str, Any]:
         symbol = str(packet.get("symbol") or "").upper()
@@ -486,8 +548,10 @@ function renderNews(x){{
  g.append(cell("Publisher",x.publisher),cell("Published",x.published_at),cell("Status","NEWS REVIEW REQUIRED"),cell("Auto Recheck","NO"));c.append(g);
  const row=document.createElement("div");row.className="row";
  const copy=document.createElement("button");copy.textContent="COPY NEWS REVIEW PACKET / 复制新闻复核包";
- copy.onclick=async()=>{{const packet={{kind:"RUNLU_SCOUT_NEWS_REVIEW",symbol:x.symbol,category:x.category,title:x.title,publisher:x.publisher,publishedAt:x.published_at,link:x.link,sourceType:x.source_type,automaticRecheck:false,tradeEligible:false}};try{{await navigator.clipboard.writeText(JSON.stringify(packet,null,2));copy.textContent="COPIED / 已复制"}}catch(e){{alert("Copy failed: "+e.message)}}}};
- row.append(copy);c.append(row);return c
+ copy.onclick=async()=>{{const packet={{kind:"RUNLU_SCOUT_NEWS_REVIEW",alertId:x.id,symbol:x.symbol,category:x.category,title:x.title,publisher:x.publisher,publishedAt:x.published_at,link:x.link,sourceType:x.source_type,automaticRecheck:false,tradeEligible:false}};try{{await navigator.clipboard.writeText(JSON.stringify(packet,null,2));copy.textContent="COPIED / 已复制"}}catch(e){{alert("Copy failed: "+e.message)}}}};
+ row.append(copy);
+ if(x.status==="NEWS_REVIEW_REQUIRED"){{const escalate=document.createElement("button");escalate.textContent="ESCALATE TO RECHECK / 确认重大并复查";escalate.onclick=async()=>{{const msg="Confirm this independent-news item is material enough to reopen research for "+x.symbol+"? This does NOT authorize any trade.";if(!confirm(msg))return;try{{await api("/api/scout/news-escalate",{{symbol:x.symbol,alert_id:x.id,user_confirmed_material:true}});await load()}}catch(e){{alert("News escalation failed: "+e.message)}}}};row.append(escalate)}}
+ c.append(row);return c
 }}
 function renderResearch(x){{
  const c=document.createElement("div");c.className="card";
@@ -649,7 +713,7 @@ def make_handler(state: PanelState, session_token: str, port: int):
                     self._json({"proposal": state.reject(str(body.get("proposal_id") or ""))})
                 else:
                     self._json({"error": "Not found"}, 404)
-            except (ApprovalPanelError, ApprovalLedgerError, ExecutionBridgeError, ScoutRegistryError) as exc:
+            except (ApprovalPanelError, ApprovalLedgerError, ExecutionBridgeError, ScoutRegistryError, IndependentNewsError) as exc:
                 self._json({"error": str(exc)}, 409)
 
         def do_PUT(self):
