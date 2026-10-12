@@ -262,6 +262,14 @@ class PanelState:
         if not isinstance(cards, list):
             return []
 
+        try:
+            registry = json.loads(self.scout_registry_path.read_text(encoding="utf-8"))
+            registry_candidates = registry.get("candidates") if isinstance(registry, dict) else {}
+            if not isinstance(registry_candidates, dict):
+                registry_candidates = {}
+        except (OSError, json.JSONDecodeError):
+            registry_candidates = {}
+
         safe = []
         for card in cards[:5]:
             if not isinstance(card, dict):
@@ -272,11 +280,20 @@ class PanelState:
             scout = card.get("scout") if isinstance(card.get("scout"), dict) else {}
             agenda = card.get("researchAgenda") if isinstance(card.get("researchAgenda"), dict) else {}
             authority = card.get("authority") if isinstance(card.get("authority"), dict) else {}
+            current = registry_candidates.get(symbol) if isinstance(registry_candidates.get(symbol), dict) else {}
+            draft = current.get("researchDraft") if isinstance(current.get("researchDraft"), dict) else {}
+            final_research = current.get("research") if isinstance(current.get("research"), dict) else {}
+            research_status = current.get("researchStatus") or "PENDING"
+            digest = draft.get("digest") or final_research.get("researchDigest")
             safe.append({
                 "symbol": symbol,
                 "score": scout.get("score"),
                 "tier": scout.get("tier"),
-                "stage": scout.get("stage") or "RESEARCH_REQUIRED",
+                "stage": current.get("stage") or scout.get("stage") or "RESEARCH_REQUIRED",
+                "research_status": research_status,
+                "research_digest": digest,
+                "assistant_research_complete": research_status in {"ASSISTANT_COMPLETE_AWAITING_USER", "FINALIZED"},
+                "user_confirmed": research_status == "FINALIZED",
                 "reasons": [str(x) for x in (scout.get("reasons") or [])][:8],
                 "risk_flags": [str(x) for x in (scout.get("riskFlags") or [])][:8],
                 "questions": [str(x) for x in (agenda.get("questions") or [])][:12],
@@ -285,6 +302,7 @@ class PanelState:
                 "broker_submission_enabled": False,
                 "automatic_promotion": False,
                 "source_policy": agenda.get("evidenceRequirements") or {},
+                "archive_version": draft.get("archiveVersion") or final_research.get("archiveVersion"),
             })
         return safe
 
