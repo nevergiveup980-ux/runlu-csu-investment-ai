@@ -164,3 +164,51 @@ tradeEligible = false
 
 CSU remains the only symbol connected to the existing dedicated proposal and
 execution-readiness architecture.
+
+
+## Daily Research + Watchman
+
+`bridge/scout_daily.py` turns Hunter output into a bounded after-close research
+routine.
+
+Default behavior:
+
+- weekday only;
+- no earlier than 16:20 America/Toronto;
+- 3 Hunter batches per day by default;
+- hard limit of 1-6 batches;
+- one completed run per Toronto calendar date;
+- writes `.csu-private/scout-daily-top5.json`;
+- reports the current Top 5 non-PASS research candidates;
+- keeps `tradeEligible = false` and broker submission disabled.
+
+Each Top-5 row now also receives a private **RUNLU Research Card** from
+`bridge/scout_research_card.py`. The card starts incomplete and requires
+business model, financial quality, valuation, industry/competition, management,
+recent news/catalysts, bull case, bear case, key risks, a "what could make us
+wrong" section, an invalidation condition, and at least two sources before it can
+be considered research-complete.
+
+Research completeness still does not authorize trading.
+
+`bridge/scout_watchman.py` is the local scheduler process. It may stay running
+on the Mac and wakes every 15-60 minutes (30 minutes by default). The internal
+daily guard means wake-ups outside the research window do nothing, and a
+completed date is not scanned twice.
+
+The intended flow is now:
+
+```text
+CSU dedicated realtime bot  <---- remains primary
+          |
+          +------------------------------+
+                                         |
+TSX catalog -> Hunter rotation -> Daily Top 5
+                              -> Research Cards
+                              -> user + assistant due diligence
+                              -> PASS / WATCH / APPROVED_UNIVERSE
+                              -> tradeEligible = false
+```
+
+There is still no background brokerage executor, no Scout auto-buy path, and no
+automatic promotion from research ranking into the CSU execution architecture.
