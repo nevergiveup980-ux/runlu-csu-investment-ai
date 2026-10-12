@@ -69,6 +69,33 @@ def build_research_card(candidate: Dict[str, Any]) -> Dict[str, Any]:
             "brokerSubmissionEnabled": False,
         },
     }
+    draft = candidate.get("researchDraft")
+    if isinstance(draft, dict) and isinstance(draft.get("research"), dict):
+        card["research"] = draft["research"]
+        card["decision"]["assistantResearchComplete"] = bool(draft.get("assistantResearchComplete"))
+        card["decision"]["userConfirmed"] = bool(draft.get("userConfirmed"))
+        card["decision"]["finalDecision"] = draft.get("finalDecision")
+        card["researchWriteback"] = {
+            "status": candidate.get("researchStatus") or "ASSISTANT_COMPLETE_AWAITING_USER",
+            "digest": draft.get("digest"),
+            "archiveVersion": draft.get("archiveVersion"),
+            "completedAt": draft.get("completedAt"),
+            "evidence": draft.get("evidence") or {},
+        }
+
+    if candidate.get("researchStatus") == "FINALIZED" and isinstance(candidate.get("research"), dict):
+        card["decision"]["assistantResearchComplete"] = True
+        card["decision"]["userConfirmed"] = True
+        card["decision"]["finalDecision"] = candidate["research"].get("finalDecision")
+        card["authority"]["realtimeEligible"] = bool(candidate.get("realtimeEligible"))
+        card["researchWriteback"] = {
+            "status": "FINALIZED",
+            "digest": candidate["research"].get("researchDigest"),
+            "archiveVersion": candidate["research"].get("archiveVersion"),
+            "completedAt": candidate["research"].get("completedAt"),
+            "evidence": candidate["research"].get("evidence") or {},
+        }
+
     card["researchAgenda"] = build_research_agenda(card)
     return card
 
