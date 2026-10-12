@@ -582,3 +582,79 @@ Any event-driven recheck still immediately sets:
 
 The radar only reopens due diligence. It cannot approve, construct, or submit a
 broker order.
+
+
+## Independent News Review Radar
+
+Scout now has a third monitoring lane for independent news context.
+
+`bridge/scout_independent_news.py` uses a best-effort Google News RSS search
+for finalized non-CSU WATCH / APPROVED_UNIVERSE symbols. This lane deliberately
+does not share the private bearer token and does not use brokerage data.
+
+The independent-news lane is less trusted than the official press-release lane.
+Ticker-only web-news matching can be noisy, sources can summarize facts
+incorrectly, and headlines can overstate or omit important context.
+
+For that reason a new independent-news item does **not** automatically move a
+candidate to `RECHECK_REQUIRED`.
+
+Instead it is stored privately as:
+
+`NEWS_REVIEW_REQUIRED`
+
+with:
+
+`automaticRecheck = false`
+
+`userConfirmedMaterial = false`
+
+`tradeEligible = false`
+
+The first successful RSS fetch establishes a per-symbol baseline so old stories
+do not appear as new alerts. Later cycles emit only previously unseen story
+IDs. State and alerts are stored in the private `.csu-private` directory.
+
+The local watchman defaults to a 30-minute cycle, is bounded to 15-60 minutes,
+rotates at most three symbols per cycle, and runs only during the weekday
+07:00-18:30 America/Toronto review window.
+
+### Independent News Review in localhost panel
+
+The approval panel now has a separate:
+
+**Independent News Review / 独立新闻复核**
+
+section.
+
+Each alert exposes only sanitized research context:
+
+- symbol;
+- coarse material category;
+- headline;
+- publisher;
+- publication time;
+- public story link.
+
+The operator can copy a
+`RUNLU_SCOUT_NEWS_REVIEW` packet into the user + assistant research
+conversation.
+
+There is also an explicit:
+
+**ESCALATE TO RECHECK / 确认重大并复查**
+
+control.
+
+This action requires a user confirmation dialog and a matching private alert
+record. Only after the user confirms that the independent story is materially
+relevant does the system feed a sanitized event into the existing recheck
+engine.
+
+Escalation results only in research being reopened. It still enforces:
+
+`tradeEligible = false`
+
+`brokerSubmissionEnabled = false`
+
+and never authorizes or constructs a broker order.
