@@ -8,7 +8,7 @@ try{
  const page=await browser.newPage(process.env.INVEST_BROWSER==='webkit'?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{ });
  await page.route('**/api/market?**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({indicators:{price:2500,rsi14:48},analysis:{stance:'NEUTRAL'},asOf:'2026-10-10'})}));
  await page.goto('http://127.0.0.1:4173/');
- assert.equal(await page.locator('nav[aria-label="Investment sections"] a').count(),4);
+ assert.equal(await page.locator('nav[aria-label="Investment sections"] a').count(),5);
  assert.equal(await page.locator('a[href="#memory"]').getAttribute('href'),'#memory');
  // GitHub Pages is a static, local-only preview; verify its banner and quote guard.
  const preview=await browser.newPage();
@@ -22,6 +22,11 @@ try{
  assert.match(await preview.locator('#welcome').innerText(),/Welcome to RUNLU INVEST/);
  assert.equal(await preview.locator('#price').innerText(),'—');
  await preview.close();
+ await page.locator('#watchSymbol').fill('MSFT');
+ await page.locator('#watchName').fill('Microsoft');
+ await page.locator('#addWatch').click();
+ assert.match(await page.locator('#watchlistItems').innerText(),/MSFT/);
+ assert.equal(await page.locator('#holdingCount').innerText(),'0');
  await page.locator('#newSymbol').fill('AAPL');
  await page.locator('#newName').fill('Apple Inc.');
  await page.locator('#addHolding').click();
@@ -32,6 +37,7 @@ try{
  await page.locator('#saveMemory').click();
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
  await page.reload();
+ assert.match(await page.locator('#watchlistItems').innerText(),/MSFT/);
  assert.match(await page.locator('#selectedSymbol').innerText(),/AAPL/);
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
  assert.match(await page.locator('#marketStatus').innerText(),/Market research loaded/);
@@ -49,6 +55,7 @@ try{
  await page.locator('#holdingTitle').getByText('Apple Inc. · AAPL').waitFor();
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
  assert.match(await page.locator('#backupStatus').innerText(),/Backup restored and verified on this device/);
+ assert.match(await page.locator('#watchlistItems').innerText(),/MSFT/);
  await page.reload();
  assert.match(await page.locator('#timeline').innerText(),/Testing my investment thesis/);
  // Invalid import must not overwrite an existing portfolio or memory.
