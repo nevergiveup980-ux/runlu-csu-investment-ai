@@ -5,6 +5,7 @@ import { createTradeProposal } from "./trade-proposal";
 import { buildDecisionReviewPacket } from "./review-packet";
 import { scoreScoutCandidate } from "./scout";
 import { buildScoutUniverse, type StockCatalogRow } from "./scout-universe";
+import { normalizeWatchRequest } from "./scout-watch-feed";
 
 type Candle = {
   datetime: string;
@@ -509,6 +510,68 @@ export default {
             automaticTrading: false,
           },
           notice: "Catalog discovery only. Membership in this universe grants no trading authority.",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json", "cache-control": "no-store" },
+        });
+      }
+
+      if (url.pathname === "/api/scout/watch-quotes" && request.method === "POST") {
+        const secret = (env as Env & { CSU_SNAPSHOT_TOKEN?: string }).CSU_SNAPSHOT_TOKEN;
+        if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
+          return new Response(JSON.stringify({ error: "Private Scout Watch quotes unavailable" }), {
+            status: 403,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        let body: unknown;
+        try {
+          body = await request.json();
+        } catch {
+          return json({ error: "Invalid Scout Watch JSON" }, 400, "no-store");
+        }
+
+        let watch;
+        try {
+          watch = normalizeWatchRequest(body);
+        } catch (error) {
+          return json({ error: String(error) }, 400, "no-store");
+        }
+
+        const observations: { symbol: string; price: number; marketDataAsOf: string | undefined }[] = [];
+        const errors: { symbol: string; error: string }[] = [];
+
+        for (const symbol of watch.symbols) {
+          try {
+            const candles = await twelveSymbol(env, symbol, watch.interval, 2);
+            const latest = candles.at(-1);
+            if (!latest || !Number.isFinite(latest.close) || latest.close <= 0) {
+              throw new Error("No valid latest price");
+            }
+            observations.push({
+              symbol,
+              price: latest.close,
+              marketDataAsOf: latest.datetime,
+            });
+          } catch (error) {
+            errors.push({ symbol, error: String(error) });
+          }
+        }
+
+        return new Response(JSON.stringify({
+          product: "RUNLU Scout Watch",
+          mode: "WATCH_OBSERVATION_RESEARCH_ONLY",
+          interval: watch.interval,
+          observations,
+          errors,
+          policy: {
+            researchOnly: true,
+            tradeEligible: false,
+            brokerSubmissionEnabled: false,
+            csuHandledSeparately: true,
+          },
+          notice: "Quote observations only. No brokerage account data is accepted and no order can be created.",
         }), {
           status: 200,
           headers: { "content-type": "application/json", "cache-control": "no-store" },
