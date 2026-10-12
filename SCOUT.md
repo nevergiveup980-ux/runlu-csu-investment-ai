@@ -212,3 +212,51 @@ TSX catalog -> Hunter rotation -> Daily Top 5
 
 There is still no background brokerage executor, no Scout auto-buy path, and no
 automatic promotion from research ranking into the CSU execution architecture.
+
+
+## Joint-research evidence gate
+
+`bridge/scout_research_agenda.py` now turns every Research Card into a
+structured due-diligence agenda. The agenda explicitly asks about business
+model, financial quality, balance sheet, valuation, industry/competition,
+management, recent catalysts, bull case, bear case, what could make us wrong,
+and an invalidation condition.
+
+Research completion now requires a structured evidence bundle with:
+
+- at least 3 valid sources;
+- at least 1 primary company/regulatory source;
+- at least 1 independent source;
+- unique source URLs;
+- research notes for every source;
+- ISO-dated evidence when a publication date is supplied.
+
+Primary source types include regulatory filings, company investor-relations
+material, and earnings releases. Independent source types include news,
+analyst research, and industry sources.
+
+Passing the evidence gate still keeps:
+
+`tradeEligible = false`
+
+and
+
+`brokerSubmissionEnabled = false`.
+
+## Local Scout Research Queue
+
+The localhost approval panel now has a separate **Scout Research Queue** below
+the CSU approval cards.
+
+It reads only the private daily Top-5 report and exposes a sanitized,
+research-only view containing symbol, Scout score/tier, reasons, risk flags,
+research questions, and source-policy requirements. Account identifiers,
+balances, snapshots, and brokerage credentials are not surfaced.
+
+Each candidate has a **COPY RESEARCH PACKET / 复制调研包** control that copies a
+sanitized `RUNLU_SCOUT_RESEARCH_PACKET`. That packet can be brought into the
+user + assistant research conversation without carrying brokerage data or
+granting any trading authority.
+
+The panel does not provide an APPROVE button for Scout research candidates.
+Research results must still go through the explicit joint-review workflow.
