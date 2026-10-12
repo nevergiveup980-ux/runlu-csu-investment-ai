@@ -420,3 +420,32 @@ The localhost Research Queue surfaces a prominent
 **RECHECK REQUIRED / 需要重新调研** alert with the trigger reasons. A fresh
 research result must then pass the same evidence/writeback/user-confirmation
 workflow as a new candidate.
+
+
+## Scout Watch Monitor
+
+`bridge/scout_watch.py` adds the non-executing monitoring layer for finalized
+Scout research.
+
+Only candidates in `WATCH` or `APPROVED_UNIVERSE` with
+`researchStatus = FINALIZED` are eligible for monitoring. New discoveries,
+pending research, PASS candidates, and candidates already in
+`RECHECK_REQUIRED` are excluded.
+
+The monitor accepts normalized observations containing an optional price and
+zero or more material-event records. It keeps only a private local reference
+price/timestamp and feeds changes into the material-change recheck engine.
+
+The first observed price establishes a baseline. A later move crossing the
+configured material-change threshold, or a recognized material event, moves
+the candidate to `RECHECK_REQUIRED` and disables realtime eligibility.
+
+Polling is bounded to 60–300 seconds, with 300 seconds as the default. This is
+appropriate for the project's 1–5 minute research-monitoring cadence and avoids
+pretending to be a professional tick-level trading feed.
+
+The module intentionally has no brokerage snapshot dependency and no order
+payload or broker submission route. Its `run_forever(observer)` entry point
+accepts a future quote/news observer; provider-specific ingestion is not yet
+implemented and must not be represented as active monitoring until that
+observer is connected.
