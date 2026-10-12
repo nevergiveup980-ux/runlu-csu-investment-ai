@@ -43,14 +43,30 @@ def _parse_iso(value: Any) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def _event_types(events: Iterable[Dict[str, Any]]) -> List[str]:
-    out: List[str] = []
+def _event_details(events: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    seen = set()
     for event in events:
         if not isinstance(event, dict):
             continue
         event_type = str(event.get("type") or "").upper()
-        if event_type in TRIGGER_TYPES and event_type not in out:
-            out.append(event_type)
+        if event_type not in TRIGGER_TYPES:
+            continue
+        event_id = str(event.get("id") or "").strip()
+        title = str(event.get("title") or "").strip()[:240]
+        key = event_id or f"{event_type}:{title}"
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            "id": event_id or None,
+            "type": event_type,
+            "title": title or None,
+            "datetime": event.get("datetime"),
+            "sourceType": str(event.get("sourceType") or "") or None,
+        })
+        if len(out) >= 10:
+            break
     return out
 
 
@@ -82,7 +98,8 @@ def evaluate_recheck(
         if abs(move) >= MATERIAL_PRICE_MOVE_PCT:
             reasons.append(f"PRICE_MOVE_PCT:{move:.2f}")
 
-    event_types = _event_types(events)
+    event_details = _event_details(events)
+    event_types = list(dict.fromkeys(x["type"] for x in event_details))
     reasons.extend(f"EVENT:{x}" for x in event_types)
 
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
@@ -95,6 +112,7 @@ def evaluate_recheck(
         "recheckRequired": bool(reasons),
         "reasons": reasons,
         "eventTypes": event_types,
+        "eventDetails": event_details,
         "previousScore": previous_score,
         "currentScore": latest_score,
         "previousPrice": previous_price,
@@ -120,6 +138,7 @@ def build_recheck_packet(candidate: Dict[str, Any], evaluation: Dict[str, Any]) 
         "previousResearchDigest": research.get("researchDigest"),
         "reasons": list(evaluation.get("reasons") or []),
         "eventTypes": list(evaluation.get("eventTypes") or []),
+        "eventDetails": list(evaluation.get("eventDetails") or []),
         "score": {
             "previous": evaluation.get("previousScore"),
             "current": evaluation.get("currentScore"),
