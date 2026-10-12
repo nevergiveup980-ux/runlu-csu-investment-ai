@@ -45,11 +45,23 @@ class ScoutRecheckTests(unittest.TestCase):
     def test_material_event_triggers_recheck(self):
         result = evaluate_recheck(
             self.candidate(),
-            events=[{"type": "EARNINGS"}, {"type": "MATERIAL_NEWS"}],
+            events=[
+                {
+                    "id": "pr-1",
+                    "type": "EARNINGS",
+                    "title": "Quarterly results",
+                    "datetime": "2026-10-12T12:00:00",
+                    "sourceType": "OFFICIAL_PRESS_RELEASE",
+                },
+                {"type": "MATERIAL_NEWS", "title": "Other material update"},
+            ],
         )
         self.assertTrue(result["recheckRequired"])
         self.assertIn("EVENT:EARNINGS", result["reasons"])
         self.assertIn("EVENT:MATERIAL_NEWS", result["reasons"])
+        self.assertEqual(result["eventDetails"][0]["id"], "pr-1")
+        self.assertEqual(result["eventDetails"][0]["title"], "Quarterly results")
+        self.assertEqual(result["eventDetails"][0]["sourceType"], "OFFICIAL_PRESS_RELEASE")
 
     def test_stale_research_triggers_recheck(self):
         candidate = self.candidate()
@@ -70,10 +82,15 @@ class ScoutRecheckTests(unittest.TestCase):
 
     def test_recheck_packet_is_research_only(self):
         candidate = self.candidate(score=96)
-        evaluation = evaluate_recheck(candidate, previous_score=80)
+        evaluation = evaluate_recheck(
+            candidate,
+            previous_score=80,
+            events=[{"id": "pr-2", "type": "GUIDANCE", "title": "Guidance update"}],
+        )
         packet = build_recheck_packet(candidate, evaluation)
         self.assertEqual(packet["kind"], "RUNLU_SCOUT_RECHECK")
         self.assertEqual(packet["requiredAction"], "JOINT_RESEARCH_RECHECK")
+        self.assertEqual(packet["eventDetails"][0]["title"], "Guidance update")
         self.assertFalse(packet["tradeEligible"])
         self.assertFalse(packet["brokerSubmissionEnabled"])
 
