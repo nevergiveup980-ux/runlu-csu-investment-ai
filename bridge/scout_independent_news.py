@@ -159,6 +159,39 @@ def fetch_symbol_news(symbol: str, *, timeout: int = 15) -> List[Dict[str, Any]]
     return parse_google_news_rss(body, symbol)
 
 
+def mark_alert_escalated(
+    alert_id: str,
+    *,
+    alert_path: Path = ALERT_FILE,
+) -> Dict[str, Any]:
+    data = _read_json(alert_path)
+    alerts = data.get("alerts")
+    if not isinstance(alerts, list):
+        raise IndependentNewsError("Independent-news alert archive is unavailable")
+
+    target = None
+    for alert in alerts:
+        if isinstance(alert, dict) and str(alert.get("id") or "") == str(alert_id or ""):
+            target = alert
+            break
+    if target is None:
+        raise IndependentNewsError("Independent-news alert was not found")
+    if target.get("status") == "ESCALATED_TO_RECHECK":
+        return target
+
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    target["status"] = "ESCALATED_TO_RECHECK"
+    target["userConfirmedMaterial"] = True
+    target["escalatedAt"] = now
+    target["tradeEligible"] = False
+    target["brokerSubmissionEnabled"] = False
+    data["updatedAt"] = now
+    data["tradeEligible"] = False
+    data["brokerSubmissionEnabled"] = False
+    _atomic_json(alert_path, data)
+    return target
+
+
 def run_news_cycle(
     *,
     state_path: Path = STATE_FILE,
