@@ -43,6 +43,7 @@ DEFAULT_PORT = 8775
 MAX_BODY = 65536
 SESSION_FILE = Path(".csu-private") / "approval-session-token"
 SCOUT_DAILY_REPORT = Path(".csu-private") / "scout-daily-top5.json"
+SCOUT_NEWS_ALERTS = Path(".csu-private") / "scout-news-alerts.json"
 
 
 class ApprovalPanelError(RuntimeError):
@@ -79,11 +80,13 @@ class PanelState:
         scout_report_path: Path = SCOUT_DAILY_REPORT,
         scout_registry_path: Path = DEFAULT_REGISTRY,
         scout_archive_path: Path = DEFAULT_ARCHIVE,
+        scout_news_alerts_path: Path = SCOUT_NEWS_ALERTS,
     ):
         self.ledger_path = ledger_path
         self.scout_report_path = Path(scout_report_path)
         self.scout_registry_path = Path(scout_registry_path)
         self.scout_archive_path = Path(scout_archive_path)
+        self.scout_news_alerts_path = Path(scout_news_alerts_path)
         self._pending: Dict[str, Dict[str, Any]] = {}
         self._reviews: Dict[str, Dict[str, Any]] = {}
 
@@ -307,6 +310,39 @@ class PanelState:
             })
         return safe
 
+    def scout_news_alerts(self):
+        try:
+            raw = json.loads(self.scout_news_alerts_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return []
+        alerts = raw.get("alerts") if isinstance(raw, dict) else None
+        if not isinstance(alerts, list):
+            return []
+        safe = []
+        for alert in alerts[-20:]:
+            if not isinstance(alert, dict):
+                continue
+            symbol = str(alert.get("symbol") or "").upper()
+            if not symbol.endswith(":TSX") or symbol == "CSU:TSX":
+                continue
+            safe.append({
+                "id": str(alert.get("id") or "")[:80],
+                "symbol": symbol,
+                "category": str(alert.get("category") or "INDEPENDENT_NEWS")[:40],
+                "title": str(alert.get("title") or "")[:300],
+                "link": str(alert.get("link") or "")[:1000],
+                "published_at": alert.get("publishedAt"),
+                "publisher": str(alert.get("publisher") or "")[:120] or None,
+                "status": "NEWS_REVIEW_REQUIRED",
+                "detected_at": alert.get("detectedAt"),
+                "source_type": "INDEPENDENT_NEWS_RSS",
+                "automatic_recheck": False,
+                "user_confirmed_material": False,
+                "trade_eligible": False,
+                "broker_submission_enabled": False,
+            })
+        return list(reversed(safe))
+
     def writeback_scout_research(self, packet: Dict[str, Any]) -> Dict[str, Any]:
         symbol = str(packet.get("symbol") or "").upper()
         if not symbol.endswith(":TSX") or symbol == "CSU:TSX":
@@ -414,6 +450,9 @@ button.primary{{background:#171717;color:white;border-color:#171717}}button:disa
 <h1 style="font-size:24px;margin-top:34px">Scout Research Queue / 调研候选</h1>
 <div class="banner"><b>RESEARCH ONLY</b> · Scout 候选不能在这里获得交易权限，必须先完成咱俩的联合调研。</div>
 <div id="research"><div class="muted">No Scout research queue yet.</div></div>
+<h1 style="font-size:24px;margin-top:34px">Independent News Review / 独立新闻复核</h1>
+<div class="banner"><b>HEADLINE REVIEW ONLY</b> · 独立新闻不会自动改变研究结论；标题可能有误导或股票代码歧义，必须先核实。</div>
+<div id="news"><div class="muted">No new independent-news alerts.</div></div>
 </main><script>
 const SESSION={token};
 const esc=x=>String(x??"—");
@@ -438,6 +477,17 @@ function renderCard(x){{
  yes.onclick=async()=>{{const msg=reviewOnly?"Approve this simulation-only CSU decision review?":"Approve this exact CSU limit-order proposal? No broker order will be sent in this version.";if(!confirm(msg))return;try{{await api(reviewOnly?"/api/approve-review":"/api/approve",{{proposal_id:x.proposal_id}});await load()}}catch(e){{alert(e.message)}}}};
  no.onclick=async()=>{{if(!confirm("Reject this proposal?"))return;try{{await api(reviewOnly?"/api/reject-review":"/api/reject",{{proposal_id:x.proposal_id}});await load()}}catch(e){{alert(e.message)}}}};
  row.append(yes,no);c.append(row);return c
+}}
+function renderNews(x){{
+ const c=document.createElement("div");c.className="card";
+ const t=document.createElement("div");t.className="action";t.style.fontSize="21px";t.textContent=x.symbol+" · "+esc(x.category);c.append(t);
+ const title=document.createElement("div");title.className="v";title.textContent=x.title;c.append(title);
+ const g=document.createElement("div");g.className="grid";
+ g.append(cell("Publisher",x.publisher),cell("Published",x.published_at),cell("Status","NEWS REVIEW REQUIRED"),cell("Auto Recheck","NO"));c.append(g);
+ const row=document.createElement("div");row.className="row";
+ const copy=document.createElement("button");copy.textContent="COPY NEWS REVIEW PACKET / 复制新闻复核包";
+ copy.onclick=async()=>{{const packet={{kind:"RUNLU_SCOUT_NEWS_REVIEW",symbol:x.symbol,category:x.category,title:x.title,publisher:x.publisher,publishedAt:x.published_at,link:x.link,sourceType:x.source_type,automaticRecheck:false,tradeEligible:false}};try{{await navigator.clipboard.writeText(JSON.stringify(packet,null,2));copy.textContent="COPIED / 已复制"}}catch(e){{alert("Copy failed: "+e.message)}}}};
+ row.append(copy);c.append(row);return c
 }}
 function renderResearch(x){{
  const c=document.createElement("div");c.className="card";
@@ -474,6 +524,7 @@ function renderResearch(x){{
 }}
 async function load(){{try{{const d=await api("/api/pending");const root=document.getElementById("cards");root.replaceChildren();if(!d.proposals.length){{const m=document.createElement("div");m.className="muted";m.textContent="Waiting for a proposal…";root.append(m)}}else d.proposals.forEach(x=>root.append(renderCard(x)))}}catch(e){{document.getElementById("cards").textContent=e.message}}
  try{{const d=await api("/api/scout/research");const root=document.getElementById("research");root.replaceChildren();if(!d.candidates.length){{const m=document.createElement("div");m.className="muted";m.textContent="No Scout research queue yet.";root.append(m)}}else d.candidates.forEach(x=>root.append(renderResearch(x)))}}catch(e){{document.getElementById("research").textContent=e.message}}
+ try{{const d=await api("/api/scout/news");const root=document.getElementById("news");root.replaceChildren();if(!d.alerts.length){{const m=document.createElement("div");m.className="muted";m.textContent="No new independent-news alerts.";root.append(m)}}else d.alerts.forEach(x=>root.append(renderNews(x)))}}catch(e){{document.getElementById("news").textContent=e.message}}
 }}
 load();setInterval(load,2500);
 </script></body></html>"""
@@ -555,6 +606,18 @@ def make_handler(state: PanelState, session_token: str, port: int):
                 self._json({
                     "candidates": state.scout_research_cards(),
                     "research_only": True,
+                    "trade_eligible": False,
+                    "broker_submission_enabled": False,
+                })
+                return
+            if path == "/api/scout/news":
+                if not self._api_auth():
+                    self._json({"error": "Forbidden"}, 403)
+                    return
+                self._json({
+                    "alerts": state.scout_news_alerts(),
+                    "headline_review_only": True,
+                    "automatic_recheck": False,
                     "trade_eligible": False,
                     "broker_submission_enabled": False,
                 })
