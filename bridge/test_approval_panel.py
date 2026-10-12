@@ -102,6 +102,8 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertIn("/api/scout/research", page)
         self.assertIn("Scout Research Queue", page)
         self.assertIn("RESEARCH ONLY", page)
+        self.assertIn("COPY RESEARCH PACKET", page)
+        self.assertIn("RUNLU_SCOUT_RESEARCH_PACKET", page)
 
     def test_scout_research_cards_are_sanitized_and_never_tradeable(self):
         self.scout_report.write_text(json.dumps({
