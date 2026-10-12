@@ -111,6 +111,7 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertIn("/api/scout/finalize-research", page)
         self.assertIn("APPROVED UNIVERSE", page)
         self.assertIn("RECHECK REQUIRED", page)
+        self.assertIn("Material event context", page)
 
     def test_scout_research_cards_are_sanitized_and_never_tradeable(self):
         self.scout_report.write_text(json.dumps({
