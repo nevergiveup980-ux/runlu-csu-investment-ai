@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -10,7 +11,8 @@ class ApprovalPanelStateTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.ledger = Path(self.tmp.name) / "approval-ledger.jsonl"
-        self.state = PanelState(self.ledger)
+        self.scout_report = Path(self.tmp.name) / "scout-daily-top5.json"
+        self.state = PanelState(self.ledger, self.scout_report)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -94,6 +96,45 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertIn("/api/approve-review", page)
         self.assertIn("/api/reject-review", page)
         self.assertIn("LOCAL REVIEW ONLY", page)
+
+    def test_html_includes_read_only_scout_research_queue(self):
+        page = _html("synthetic-session")
+        self.assertIn("/api/scout/research", page)
+        self.assertIn("Scout Research Queue", page)
+        self.assertIn("RESEARCH ONLY", page)
+
+    def test_scout_research_cards_are_sanitized_and_never_tradeable(self):
+        self.scout_report.write_text(json.dumps({
+            "researchCards": [{
+                "symbol": "AAA:TSX",
+                "scout": {
+                    "score": 81,
+                    "tier": "PRIORITY_RESEARCH",
+                    "stage": "RESEARCH_REQUIRED",
+                    "reasons": ["near support"],
+                    "riskFlags": ["news review"],
+                },
+                "researchAgenda": {
+                    "questions": ["What could make us wrong?"],
+                    "evidenceRequirements": {"minimumSources": 3},
+                },
+                "authority": {
+                    "tradeEligible": True,
+                    "brokerSubmissionEnabled": True,
+                },
+                "account_id": "must-not-surface",
+                "cash": 9999,
+            }]
+        }), encoding="utf-8")
+        cards = self.state.scout_research_cards()
+        self.assertEqual(len(cards), 1)
+        card = cards[0]
+        self.assertEqual(card["symbol"], "AAA:TSX")
+        self.assertFalse(card["trade_eligible"])
+        self.assertFalse(card["broker_submission_enabled"])
+        self.assertFalse(card["automatic_promotion"])
+        self.assertNotIn("account_id", card)
+        self.assertNotIn("cash", card)
 
     def test_register_card_never_surfaces_private_account_data(self):
         card = self.state.register(self.packet())
