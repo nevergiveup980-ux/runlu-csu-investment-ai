@@ -32,6 +32,12 @@ try{
  assert.match(await page.locator('#watchlistItems').innerText(),/350.50/);
  assert.match(await page.locator('#watchlistItems').innerText(),/Watch valuation before deciding/);
  assert.equal(await page.locator('#holdingCount').innerText(),'0');
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('[data-promote="MSFT"]').click();
+ assert.equal(await page.locator('#holdingCount').innerText(),'1');
+ assert.match(await page.locator('#holdingResearch').innerText(),/Watch valuation before deciding/);
+ assert.match(await page.locator('#watchlistItems').innerText(),/MSFT/);
+ assert.equal(await page.locator('#memoryCount').innerText(),'0');
  await page.locator('#newSymbol').fill('AAPL');
  await page.locator('#newName').fill('Apple Inc.');
  await page.locator('#addHolding').click();
