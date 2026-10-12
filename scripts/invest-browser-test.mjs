@@ -8,6 +8,8 @@ try{
  const page=await browser.newPage(process.env.INVEST_BROWSER==='webkit'?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{ });
  await page.route('**/api/market?**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({indicators:{price:2500,rsi14:48},analysis:{stance:'NEUTRAL'},asOf:'2026-10-10'})}));
  await page.goto('http://127.0.0.1:4173/');
+ assert.equal(await page.locator('nav[aria-label="Investment sections"] a').count(),4);
+ assert.equal(await page.locator('a[href="#memory"]').getAttribute('href'),'#memory');
  // GitHub Pages is a static, local-only preview; verify its banner and quote guard.
  const preview=await browser.newPage();
  await preview.route('https://runlu-preview.github.io/**',async route=>{
