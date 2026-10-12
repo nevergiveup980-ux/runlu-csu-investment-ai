@@ -357,6 +357,10 @@ function renderResearch(x){{
  if(x.reasons?.length){{const h=document.createElement("div");h.className="k";h.style.marginTop="14px";h.textContent="Why Scout found it";c.append(h);const ul=document.createElement("ul");x.reasons.forEach(r=>{{const li=document.createElement("li");li.textContent=esc(r);ul.append(li)}});c.append(ul)}}
  if(x.risk_flags?.length){{const h=document.createElement("div");h.className="k";h.textContent="Risk flags";c.append(h);const ul=document.createElement("ul");x.risk_flags.forEach(r=>{{const li=document.createElement("li");li.textContent=esc(r);ul.append(li)}});c.append(ul)}}
  if(x.questions?.length){{const d=document.createElement("details");const s=document.createElement("summary");s.textContent="Research questions / 调研问题";d.append(s);const ul=document.createElement("ul");x.questions.forEach(q=>{{const li=document.createElement("li");li.textContent=esc(q);ul.append(li)}});d.append(ul);c.append(d)}}
+ const row=document.createElement("div");row.className="row";
+ const copy=document.createElement("button");copy.textContent="COPY RESEARCH PACKET / 复制调研包";
+ copy.onclick=async()=>{{const packet={{kind:"RUNLU_SCOUT_RESEARCH_PACKET",symbol:x.symbol,score:x.score,tier:x.tier,stage:x.stage,reasons:x.reasons,riskFlags:x.risk_flags,questions:x.questions,sourcePolicy:x.source_policy,researchOnly:true,tradeEligible:false}};try{{await navigator.clipboard.writeText(JSON.stringify(packet,null,2));copy.textContent="COPIED / 已复制"}}catch(e){{alert("Copy failed: "+e.message)}}}};
+ row.append(copy);c.append(row);
  return c
 }}
 async function load(){{try{{const d=await api("/api/pending");const root=document.getElementById("cards");root.replaceChildren();if(!d.proposals.length){{const m=document.createElement("div");m.className="muted";m.textContent="Waiting for a proposal…";root.append(m)}}else d.proposals.forEach(x=>root.append(renderCard(x)))}}catch(e){{document.getElementById("cards").textContent=e.message}}
