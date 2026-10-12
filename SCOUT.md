@@ -504,3 +504,81 @@ Allowed destinations are explicit `http` loopback hosts
 
 This prevents an accidentally or maliciously changed environment URL from
 forwarding `CSU_SNAPSHOT_TOKEN` to an external host.
+
+
+## Official Press-Release Event Radar
+
+Scout Watch now has a second, slower monitoring lane for material company
+events.
+
+Protected Worker endpoint:
+
+`POST /api/scout/watch-events`
+
+The endpoint accepts only 1-3 non-CSU `TICKER:TSX` symbols per request and
+uses the existing Worker-side Twelve Data credential to query official company
+press releases. The response is reduced to sanitized event metadata:
+
+- press-release ID;
+- normalized material-event category;
+- title;
+- release timestamp;
+- `sourceType = OFFICIAL_PRESS_RELEASE`.
+
+The event classifier currently recognizes:
+
+- EARNINGS;
+- GUIDANCE;
+- M_AND_A;
+- MANAGEMENT_CHANGE;
+- REGULATORY;
+- CAPITAL_RAISE;
+- DIVIDEND_CHANGE;
+- CREDIT_EVENT;
+- LITIGATION;
+- MATERIAL_NEWS fallback.
+
+The Worker does not pass full press-release bodies to the local watcher and the
+endpoint accepts no brokerage snapshot.
+
+### Local Event Radar provider
+
+`bridge/scout_event_provider.py` polls the protected loopback endpoint on a
+separate cost-aware cadence.
+
+Defaults:
+
+- 30-minute polling;
+- hard bounds of 15-60 minutes;
+- at most three Scout symbols per cycle;
+- rotating cursor when the watch universe is larger;
+- weekday event window 07:00-18:30 America/Toronto, covering common premarket
+  and after-hours announcement periods;
+- CSU remains excluded.
+
+The first successful fetch for each symbol establishes a baseline. Existing
+press releases are recorded as already seen and do not trigger a false
+`RECHECK_REQUIRED` event. Only newly observed press-release IDs are forwarded
+into the Scout recheck engine.
+
+Seen IDs and cursor state live only in the private `.csu-private` directory.
+
+### Recheck event context
+
+Material-event recheck packets now preserve sanitized event context in addition
+to the event category. The localhost Scout Research Queue can therefore show
+the official release title and timestamp that caused the research verdict to be
+reopened.
+
+Any event-driven recheck still immediately sets:
+
+`stage = RECHECK_REQUIRED`
+
+`researchStatus = RECHECK_REQUIRED`
+
+`realtimeEligible = false`
+
+`tradeEligible = false`
+
+The radar only reopens due diligence. It cannot approve, construct, or submit a
+broker order.
