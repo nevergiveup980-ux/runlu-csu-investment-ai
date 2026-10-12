@@ -382,3 +382,41 @@ The result remains:
 
 WATCH and APPROVED_UNIVERSE may be marked eligible for future non-executing
 realtime observation, but neither is connected to broker execution in Scout V1.
+
+
+## Material-change research rechecks
+
+A WATCH or APPROVED_UNIVERSE decision is no longer treated as permanently
+valid.
+
+`bridge/scout_recheck.py` can reopen joint due diligence when a material
+change is detected. Current conservative triggers are:
+
+- absolute Scout score change of at least 15 points;
+- absolute price move of at least 12% from the supplied prior reference price;
+- material events such as earnings, guidance, M&A, management change,
+  regulatory action, capital raise, dividend change, credit event, litigation,
+  or other material news;
+- finalized research age of at least 120 days.
+
+When triggered, the registry moves the candidate to:
+
+`stage = RECHECK_REQUIRED`
+
+`researchStatus = RECHECK_REQUIRED`
+
+and immediately disables realtime eligibility and trading eligibility.
+
+The recheck packet preserves the prior stage, prior research digest, trigger
+reasons, score context, and optional price context. It is always
+`JOINT_RESEARCH_RECHECK` and research-only.
+
+Daily rescans can automatically detect material Scout-score changes. Other
+event/price triggers can be fed into `flag_material_recheck()` by a future
+news/quote monitor. No event monitor or brokerage action is implied by this
+module.
+
+The localhost Research Queue surfaces a prominent
+**RECHECK REQUIRED / 需要重新调研** alert with the trigger reasons. A fresh
+research result must then pass the same evidence/writeback/user-confirmation
+workflow as a new candidate.
