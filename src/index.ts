@@ -6,6 +6,7 @@ import { buildDecisionReviewPacket } from "./review-packet";
 import { scoreScoutCandidate } from "./scout";
 import { buildScoutUniverse, type StockCatalogRow } from "./scout-universe";
 import { normalizeWatchRequest } from "./scout-watch-feed";
+import { normalizeEventSymbols, normalizeMaterialEvent, type PressReleaseLike } from "./scout-event-radar";
 
 type Candle = {
   datetime: string;
@@ -242,6 +243,28 @@ async function twelveSymbol(env: Env, symbol: string, interval: string, outputsi
 
 async function twelve(env: Env, interval: string): Promise<Candle[]> {
   return twelveSymbol(env, "CSU:TSX", interval);
+}
+
+async function twelvePressReleases(env: Env, symbol: string) {
+  if (!env.TWELVE_DATA_API_KEY) throw new Error("Market data source not configured");
+  const normalized = normalizeScoutSymbol(symbol);
+  const [ticker] = normalized.split(":");
+  const url = new URL("https://api.twelvedata.com/press_releases");
+  url.searchParams.set("symbol", ticker);
+  url.searchParams.set("exchange", "TSX");
+  url.searchParams.set("outputsize", "5");
+  url.searchParams.set("language", "en,en-US");
+
+  const response = await fetch(url, {
+    headers: { Authorization: `apikey ${env.TWELVE_DATA_API_KEY}` },
+  });
+  const data: any = await response.json();
+  if (!response.ok || !Array.isArray(data?.press_releases)) {
+    throw new Error(data?.message || "Press release data unavailable");
+  }
+  return data.press_releases
+    .map((item: PressReleaseLike) => normalizeMaterialEvent(item))
+    .filter(Boolean);
 }
 
 async function twelveTsxUniverse(env: Env) {
@@ -510,6 +533,63 @@ export default {
             automaticTrading: false,
           },
           notice: "Catalog discovery only. Membership in this universe grants no trading authority.",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json", "cache-control": "no-store" },
+        });
+      }
+
+      if (url.pathname === "/api/scout/watch-events" && request.method === "POST") {
+        const secret = (env as Env & { CSU_SNAPSHOT_TOKEN?: string }).CSU_SNAPSHOT_TOKEN;
+        if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
+          return new Response(JSON.stringify({ error: "Private Scout Event Radar unavailable" }), {
+            status: 403,
+            headers: { "content-type": "application/json", "cache-control": "no-store" },
+          });
+        }
+
+        let body: unknown;
+        try {
+          body = await request.json();
+        } catch {
+          return json({ error: "Invalid Scout Event Radar JSON" }, 400, "no-store");
+        }
+
+        let symbols: string[];
+        try {
+          symbols = normalizeEventSymbols((body as { symbols?: unknown })?.symbols);
+        } catch (error) {
+          return json({ error: String(error) }, 400, "no-store");
+        }
+
+        const observations: { symbol: string; events: unknown[] }[] = [];
+        const errors: { symbol: string; error: string }[] = [];
+
+        for (const symbol of symbols) {
+          try {
+            observations.push({
+              symbol,
+              events: await twelvePressReleases(env, symbol),
+            });
+          } catch (error) {
+            errors.push({ symbol, error: String(error) });
+          }
+        }
+
+        return new Response(JSON.stringify({
+          product: "RUNLU Scout Event Radar",
+          mode: "WATCH_EVENT_RESEARCH_ONLY",
+          sourceType: "OFFICIAL_PRESS_RELEASE",
+          observations,
+          errors,
+          policy: {
+            researchOnly: true,
+            tradeEligible: false,
+            brokerSubmissionEnabled: false,
+            userReviewRequired: true,
+            csuHandledSeparately: true,
+          },
+          notice: "Official press-release observations only. Events may reopen research but cannot authorize or place a trade.",
         }), {
           status: 200,
           headers: { "content-type": "application/json", "cache-control": "no-store" },
