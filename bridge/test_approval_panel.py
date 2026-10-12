@@ -116,6 +116,8 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertIn("Independent News Review", page)
         self.assertIn("/api/scout/news", page)
         self.assertIn("COPY NEWS REVIEW PACKET", page)
+        self.assertIn("ESCALATE TO RECHECK", page)
+        self.assertIn("/api/scout/news-escalate", page)
 
     def test_independent_news_alerts_are_sanitized_and_never_auto_recheck(self):
         self.news_alerts.write_text(json.dumps({
@@ -143,6 +145,73 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertFalse(alert["trade_eligible"])
         self.assertFalse(alert["broker_submission_enabled"])
         self.assertNotIn("account_id", alert)
+
+    def test_independent_news_requires_explicit_user_confirmation_before_recheck(self):
+        registry = Path(self.tmp.name) / "scout-registry-news.json"
+        archive = Path(self.tmp.name) / "scout-research-archive-news.json"
+        registry.write_text(json.dumps({
+            "version": 1,
+            "candidates": {
+                "AAA:TSX": {
+                    "symbol": "AAA:TSX",
+                    "stage": "WATCH",
+                    "researchStatus": "FINALIZED",
+                    "latestScore": 80,
+                    "research": {
+                        "researchDigest": "a" * 64,
+                        "finalDecision": "WATCH",
+                    },
+                    "realtimeEligible": True,
+                    "tradeEligible": False,
+                }
+            },
+        }), encoding="utf-8")
+        self.news_alerts.write_text(json.dumps({
+            "version": 1,
+            "alerts": [{
+                "id": "news-1",
+                "symbol": "AAA:TSX",
+                "category": "GUIDANCE",
+                "title": "AAA guidance questioned",
+                "link": "https://example.com/story",
+                "publishedAt": "Mon, 12 Oct 2026 12:00:00 GMT",
+                "publisher": "Independent Wire",
+                "status": "NEWS_REVIEW_REQUIRED",
+                "userConfirmedMaterial": False,
+                "tradeEligible": False,
+                "brokerSubmissionEnabled": False,
+            }],
+        }), encoding="utf-8")
+        state = PanelState(
+            self.ledger,
+            self.scout_report,
+            registry,
+            archive,
+            self.news_alerts,
+        )
+        with self.assertRaises(ApprovalPanelError):
+            state.escalate_scout_news({
+                "symbol": "AAA:TSX",
+                "alert_id": "news-1",
+                "user_confirmed_material": False,
+            })
+
+        result = state.escalate_scout_news({
+            "symbol": "AAA:TSX",
+            "alert_id": "news-1",
+            "user_confirmed_material": True,
+        })
+        self.assertEqual(result["stage"], "RECHECK_REQUIRED")
+        self.assertEqual(result["research_status"], "RECHECK_REQUIRED")
+        self.assertTrue(result["user_confirmed_material"])
+        self.assertFalse(result["automatic_recheck"])
+        self.assertFalse(result["trade_eligible"])
+        self.assertFalse(result["broker_submission_enabled"])
+
+        alerts = state.scout_news_alerts()
+        self.assertEqual(alerts[0]["status"], "ESCALATED_TO_RECHECK")
+        self.assertTrue(alerts[0]["user_confirmed_material"])
+        self.assertFalse(alerts[0]["trade_eligible"])
 
     def test_scout_research_cards_are_sanitized_and_never_tradeable(self):
         self.scout_report.write_text(json.dumps({
