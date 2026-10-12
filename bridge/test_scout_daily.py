@@ -88,6 +88,8 @@ class ScoutDailyTests(unittest.TestCase):
         self.assertEqual(saved["mode"], "RESEARCH_QUEUE_ONLY")
         self.assertTrue(saved["policy"]["jointResearchRequired"])
         self.assertFalse(saved["policy"]["tradeEligible"])
+        self.assertEqual(len(saved["researchCards"]), 2)
+        self.assertFalse(saved["researchCards"][0]["authority"]["tradeEligible"])
 
     def test_same_day_does_not_run_twice(self):
         now = datetime(2099, 1, 5, 17, 0, tzinfo=TORONTO)
