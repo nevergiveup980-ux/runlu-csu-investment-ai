@@ -79,6 +79,8 @@ def record_scan(scan_result: Dict[str, Any], path: Path = DEFAULT_REGISTRY) -> D
         previous = saved.get(symbol) or {}
         stage = previous.get("stage") or "RESEARCH_REQUIRED"
         previous_score = previous.get("latestScore")
+        if stage == "RECHECK_REQUIRED":
+            stage = previous.get("previousStageBeforeRecheck") or "WATCH"
         saved[symbol] = {
             "symbol": symbol,
             "stage": stage,
