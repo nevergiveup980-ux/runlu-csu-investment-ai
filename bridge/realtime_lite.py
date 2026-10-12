@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from bot_review_hook import publish_review_response
+from local_url import LocalUrlError, require_loopback_http
 from snaptrade_handoff import SNAPSHOT_CACHE, _auth_headers
 
 REALTIME_URL = os.getenv(
@@ -97,8 +98,12 @@ def request_realtime_candidate(
         "expiresAt": expires_at,
         "interval": interval,
     }, separators=(",", ":")).encode("utf-8")
+    try:
+        safe_url = require_loopback_http(url)
+    except LocalUrlError as exc:
+        raise RealtimeLiteError(str(exc)) from exc
     req = urllib.request.Request(
-        url,
+        safe_url,
         data=body,
         headers=_auth_headers(),
         method="POST",
