@@ -12,7 +12,8 @@
 <div class="title">RUNLU INVEST</div>
 <div class="muted">The investment companion that remembers.</div>
 <div id="previewNotice" class="safe" role="status" style="display:none;padding:12px;margin-top:14px;border:1px solid #dedfd9;border-radius:12px;background:#fff">Preview mode · Investment notes stay in this browser. Live market prices are not connected on this preview site. Export a JSON backup before clearing browser data.</div>
-<div class="hero">
+<nav class="row" aria-label="Investment sections" style="margin-top:18px"><a class="pill" href="#portfolio" style="text-decoration:none;color:inherit">Portfolio</a><a class="pill" href="#research" style="text-decoration:none;color:inherit">Research</a><a class="pill" href="#memory" style="text-decoration:none;color:inherit">Memory</a><a class="pill" href="#backup" style="text-decoration:none;color:inherit">Backup</a></nav>
+<div class="hero" id="portfolio">
   <div class="row" style="justify-content:space-between;align-items:center">
     <div><div class="muted">Portfolio</div><div class="big">My Investments</div></div>
     <span class="tag">READ-ONLY · NO TRADING</span>
@@ -35,8 +36,8 @@
  </div>
 </div>
 
-<div class="card section">
- <div class="muted">Holding Companion</div>
+<div class="card section" id="research">
+ <div class="muted">Research · Read-only</div>
  <div class="big" id="holdingTitle">Choose a holding</div>
  <div class="grid">
   <div><div class="muted">Latest price</div><div class="big" id="price">—</div></div>
@@ -46,7 +47,7 @@
  <div class="chart" id="marketStatus">Choose a holding to load market research.</div>
 </div>
 
-<div class="card section">
+<div class="card section" id="memory">
  <div class="muted">Investment Memory</div>
  <div class="big">Why did I make this decision?</div>
  <div class="form">
@@ -64,7 +65,7 @@
  </div>
  <div id="timeline" style="margin-top:14px"></div>
 </div>
-<div class="card section"><div class="muted">Memory Backup</div><div class="row" style="margin-top:12px"><button id="exportBackup">Export JSON backup</button><button id="importBackup">Import JSON backup</button><input id="backupFile" type="file" accept="application/json,.json" hidden></div><div class="safe muted">Backup files contain your investment notes. Keep them private. Import replaces local portfolio data only after confirmation.</div><div id="backupStatus" class="safe" role="status" aria-live="polite"></div></div>
+<div class="card section" id="backup"><div class="muted">Memory Backup</div><div class="row" style="margin-top:12px"><button id="exportBackup">Export JSON backup</button><button id="importBackup">Import JSON backup</button><input id="backupFile" type="file" accept="application/json,.json" hidden></div><div class="safe muted">Backup files contain your investment notes. Keep them private. Import replaces local portfolio data only after confirmation.</div><div id="backupStatus" class="safe" role="status" aria-live="polite"></div></div>
 <div class="card section"><div class="muted">Holding Story</div><div class="big" id="storyTitle">Your investment story</div><div id="story" class="mini"></div></div>
 <div class="card section">
  <div class="muted">What have I learned?</div>
