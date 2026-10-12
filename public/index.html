@@ -75,7 +75,7 @@
 const STATIC_PREVIEW=location.hostname.endsWith('.github.io');
 if(STATIC_PREVIEW)document.getElementById('previewNotice').style.display='block';
 const KEY='runlu-invest-v01';
-const seed={holdings:[{id:'csu',symbol:'CSU.TO',name:'Constellation Software'}],selected:'csu',memories:[]};
+const seed={holdings:[],selected:'',memories:[]};
 let state;
 try{state=JSON.parse(localStorage.getItem(KEY))||seed}catch{state=seed}
 const $=id=>document.getElementById(id);
