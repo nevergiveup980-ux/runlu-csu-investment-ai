@@ -39,7 +39,7 @@
 <div class="card section" id="watchlist"><div class="muted">Watchlist · Research before buying</div><div class="big">Ideas to follow</div><div class="safe muted">Watchlist symbols are not holdings. Adding one never records a trade.</div><div class="holdings" id="watchlistItems" style="margin-top:12px"></div><div class="form"><input id="watchSymbol" placeholder="Symbol e.g. MSFT"><input id="watchName" placeholder="Company / fund name"><input id="watchPrice" placeholder="Research price (optional)" inputmode="decimal"><select id="watchStage"><option value="RESEARCHING">Researching</option><option value="WAITING">Waiting for price</option><option value="REVIEW">Needs review</option></select><textarea id="watchReason" placeholder="Why is this company worth following? (optional)" maxlength="1000"></textarea><button class="primary" id="addWatch">Add to watchlist</button></div></div>
 <div class="card section" id="research">
  <div class="muted">Research · Read-only</div>
- <div class="big" id="holdingTitle">Choose a holding</div>
+ <div class="big" id="holdingTitle">Choose a holding</div><div class="safe muted" id="holdingResearch"></div>
  <div class="grid">
   <div><div class="muted">Latest price</div><div class="big" id="price">—</div></div>
   <div><div class="muted">RSI 14</div><div class="big" id="rsi">—</div></div>
@@ -102,6 +102,7 @@ function render(){
  $('holdings').innerHTML=state.holdings.map(x=>'<div class="holding '+(x.id===state.selected?'active':'')+'" data-id="'+x.id+'"><div><div class="symbol">'+escapeHtml(x.symbol)+'</div><div class="muted">'+escapeHtml(x.name||'Holding')+'</div></div><span>›</span></div>').join('');
  document.querySelectorAll('.holding').forEach(x=>x.onclick=()=>{const previousSelected=state.selected;state.selected=x.dataset.id;if(!save()){state.selected=previousSelected;return;}render();loadMarket()});
  $('holdingTitle').textContent=h?(h.name||h.symbol)+' · '+h.symbol:'Choose a holding';
+ $('holdingResearch').textContent=h?.research?.reason?'Research note: '+h.research.reason+(h.research.targetPrice?' · Research price: '+h.research.targetPrice:''):'';
  $('timeline').innerHTML=mem.length?mem.slice().reverse().map(m=>'<div class="memory"><div class="memoryHead"><strong>'+escapeHtml(m.action)+(m.price?' · '+escapeHtml(m.price):'')+'</strong><span class="muted">'+new Date(m.occurredAt).toLocaleString()+'</span></div><div style="margin-top:7px">'+escapeHtml(m.reason||'No reason recorded.')+'</div>'+(m.expectation?'<div class="mini"><strong>Expected:</strong> '+escapeHtml(m.expectation)+'</div>':'')+'<div class="row" style="margin-top:9px"><span class="tag">Outcome: '+escapeHtml(m.outcome||'PENDING')+'</span>'+(m.outcomeNote?'<span class="muted">'+escapeHtml(m.outcomeNote)+'</span>':'')+'<button data-review="'+escapeHtml(m.id)+'" style="padding:5px 9px">Review</button></div></div>').join(''):'<div class="muted">No memory yet. Your investment story starts with the first decision you record.</div>';
  document.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>reviewMemory(b.dataset.review));
 }
