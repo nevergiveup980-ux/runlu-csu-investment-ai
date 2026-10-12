@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from snaptrade_handoff import _auth_headers, cache_sanitized_snapshot, sanitize_snapshot
+from snaptrade_handoff import _auth_headers, cache_sanitized_snapshot, forward_snapshot, sanitize_snapshot
 
 
 class HandoffTests(unittest.TestCase):
@@ -15,6 +15,17 @@ class HandoffTests(unittest.TestCase):
         with patch.dict(os.environ, {"CSU_SNAPSHOT_TOKEN": "synthetic-token"}, clear=True):
             headers = _auth_headers()
             self.assertEqual(headers["Authorization"], "Bearer synthetic-token")
+
+    def test_forward_snapshot_rejects_remote_destination_before_token_access(self):
+        with patch("snaptrade_handoff._auth_headers") as auth, \
+             patch("snaptrade_handoff.urllib.request.urlopen") as urlopen:
+            with self.assertRaises(RuntimeError):
+                forward_snapshot(
+                    {"positions": [], "orders": [], "history": []},
+                    url="https://evil.example.com/api/bot/account-preview",
+                )
+        auth.assert_not_called()
+        urlopen.assert_not_called()
 
     def test_private_snapshot_cache_is_sanitized_and_local(self):
         with tempfile.TemporaryDirectory() as tmp:
