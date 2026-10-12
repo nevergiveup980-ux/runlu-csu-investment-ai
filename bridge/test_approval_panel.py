@@ -14,7 +14,8 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.ledger = Path(self.tmp.name) / "approval-ledger.jsonl"
         self.scout_report = Path(self.tmp.name) / "scout-daily-top5.json"
-        self.state = PanelState(self.ledger, self.scout_report)
+        self.news_alerts = Path(self.tmp.name) / "scout-news-alerts.json"
+        self.state = PanelState(self.ledger, self.scout_report, scout_news_alerts_path=self.news_alerts)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -112,6 +113,36 @@ class ApprovalPanelStateTests(unittest.TestCase):
         self.assertIn("APPROVED UNIVERSE", page)
         self.assertIn("RECHECK REQUIRED", page)
         self.assertIn("Material event context", page)
+        self.assertIn("Independent News Review", page)
+        self.assertIn("/api/scout/news", page)
+        self.assertIn("COPY NEWS REVIEW PACKET", page)
+
+    def test_independent_news_alerts_are_sanitized_and_never_auto_recheck(self):
+        self.news_alerts.write_text(json.dumps({
+            "alerts": [{
+                "id": "news-1",
+                "symbol": "AAA:TSX",
+                "category": "GUIDANCE",
+                "title": "AAA guidance questioned by analysts",
+                "link": "https://example.com/story",
+                "publishedAt": "Mon, 12 Oct 2026 12:00:00 GMT",
+                "publisher": "Independent Wire",
+                "detectedAt": "2026-10-12T20:00:00Z",
+                "account_id": "must-not-surface",
+                "tradeEligible": True,
+                "brokerSubmissionEnabled": True,
+            }]
+        }), encoding="utf-8")
+        alerts = self.state.scout_news_alerts()
+        self.assertEqual(len(alerts), 1)
+        alert = alerts[0]
+        self.assertEqual(alert["symbol"], "AAA:TSX")
+        self.assertEqual(alert["status"], "NEWS_REVIEW_REQUIRED")
+        self.assertFalse(alert["automatic_recheck"])
+        self.assertFalse(alert["user_confirmed_material"])
+        self.assertFalse(alert["trade_eligible"])
+        self.assertFalse(alert["broker_submission_enabled"])
+        self.assertNotIn("account_id", alert)
 
     def test_scout_research_cards_are_sanitized_and_never_tradeable(self):
         self.scout_report.write_text(json.dumps({
