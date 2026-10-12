@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List
 
+from scout_research_agenda import build_research_agenda, validate_evidence_bundle
+
 
 REQUIRED_RESEARCH_SECTIONS = (
     "business_model",
@@ -29,7 +31,7 @@ def build_research_card(candidate: Dict[str, Any]) -> Dict[str, Any]:
     if not symbol.endswith(":TSX"):
         raise ValueError("Research Card requires a TSX Scout candidate")
 
-    return {
+    card = {
         "product": "RUNLU Research Card",
         "symbol": symbol,
         "scout": {
@@ -67,6 +69,8 @@ def build_research_card(candidate: Dict[str, Any]) -> Dict[str, Any]:
             "brokerSubmissionEnabled": False,
         },
     }
+    card["researchAgenda"] = build_research_agenda(card)
+    return card
 
 
 def card_completion(card: Dict[str, Any]) -> Dict[str, Any]:
@@ -81,14 +85,19 @@ def card_completion(card: Dict[str, Any]) -> Dict[str, Any]:
             missing.append(key)
 
     sources = research.get("sources")
-    if not isinstance(sources, list) or len(sources) < 2:
-        missing.append("sources_minimum_2")
+    if not isinstance(sources, list):
+        sources = []
+    evidence = validate_evidence_bundle(sources)
+    if not evidence["complete"]:
+        missing.append("evidence_bundle")
 
     complete = not missing
     return {
         "complete": complete,
         "missing": missing,
+        "evidence": evidence,
         "tradeEligible": False,
+        "brokerSubmissionEnabled": False,
     }
 
 
