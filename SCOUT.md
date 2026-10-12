@@ -260,3 +260,88 @@ granting any trading authority.
 
 The panel does not provide an APPROVE button for Scout research candidates.
 Research results must still go through the explicit joint-review workflow.
+
+
+## Research result writeback + investment record
+
+Scout research now has a deliberate two-step writeback boundary.
+
+### Step 1 — assistant research writeback
+
+A completed research dossier uses:
+
+`RUNLU_SCOUT_RESEARCH_RESULT`
+
+The packet must:
+
+- match the exact Scout symbol;
+- contain every required Research Card section;
+- pass the structured evidence gate;
+- declare `assistantResearchComplete = true`;
+- keep `userConfirmed = false`;
+- contain no final investment decision.
+
+`bridge/scout_research_writeback.py` validates the packet, computes a SHA-256
+digest over the sanitized research body, and archives it in:
+
+`.csu-private/scout-research-archive.json`
+
+Each distinct research result receives an archive version. Identical digests
+cannot be archived twice.
+
+The candidate then moves only to:
+
+`ASSISTANT_COMPLETE_AWAITING_USER`
+
+It remains:
+
+`stage = RESEARCH_REQUIRED`
+
+`realtimeEligible = false`
+
+`tradeEligible = false`
+
+### Step 2 — explicit user final decision
+
+The final PASS / WATCH / APPROVED decision is a separate action. The registry
+now refuses finalization unless completed assistant research has already been
+written back.
+
+A final decision may be bound to the archived research SHA-256 digest. A wrong
+digest is rejected.
+
+`bridge/scout_review_cli.py decision-template SYMBOL` generates a local
+decision template containing the current research digest with
+`user_confirmed = false`. The user must explicitly change the decision and
+confirmation before the joint-review action can succeed.
+
+Final decisions are appended to a bounded `decisionHistory` and survive later
+Scout rescans.
+
+Even a user-confirmed `APPROVED` result produces
+`APPROVED_UNIVERSE`, not trading authority. Scout V1 still returns an empty
+execution-eligible symbol list.
+
+## Local panel research writeback
+
+The localhost panel now supports:
+
+`POST /api/scout/research-writeback`
+
+and a corresponding **IMPORT RESEARCH RESULT / 导入调研结果** box on each Scout
+candidate.
+
+The operator can paste a completed `RUNLU_SCOUT_RESEARCH_RESULT` generated
+from the joint research conversation. The endpoint is protected by the same
+loopback session boundary as the rest of the panel and runs the full evidence
+and authority validation before writing anything.
+
+After successful writeback, the panel merges the current private registry state
+into the daily Top-5 display and shows:
+
+- `PENDING`;
+- `ASSISTANT_COMPLETE_AWAITING_USER`; or
+- `FINALIZED`.
+
+Research writeback never records user confirmation and never creates a broker
+order.
