@@ -449,3 +449,58 @@ payload or broker submission route. Its `run_forever(observer)` entry point
 accepts a future quote/news observer; provider-specific ingestion is not yet
 implemented and must not be represented as active monitoring until that
 observer is connected.
+
+
+## Live quote feed for Scout Watch
+
+Scout Watch now has a bounded quote-data path that reuses the existing Twelve
+Data credential on the local Worker rather than placing the market-data API key
+in the Mac-side watcher.
+
+Protected endpoint:
+
+`POST /api/scout/watch-quotes`
+
+The endpoint accepts only 1-5 non-CSU `TICKER:TSX` symbols. CSU is rejected
+because it remains under the dedicated CSU Realtime Lite workflow. The interval
+is limited to `1min` or `5min`, with `5min` as the fail-safe default.
+
+The endpoint returns only:
+
+- symbol;
+- latest observed price;
+- market-data timestamp;
+- per-symbol data errors.
+
+It accepts no brokerage snapshot and cannot create an order, proposal, or trade
+permission.
+
+`bridge/scout_watch_provider.py` is the local quote adapter. It calls only the
+protected loopback endpoint, rotates through at most five WATCH /
+APPROVED_UNIVERSE symbols per cycle, and keeps its cursor in the private
+`.csu-private` directory.
+
+The default operating posture is deliberately cost-aware:
+
+- 5-minute quote interval;
+- watcher polling bounded to 60-300 seconds;
+- default polling every 300 seconds;
+- weekday monitoring window 09:30-16:10 America/Toronto;
+- at most five Scout symbols queried per cycle.
+
+This does not assert that a particular Twelve Data subscription includes every
+TSX intraday entitlement. Provider-plan availability must be verified at
+runtime.
+
+### Bearer-token transport hardening
+
+Private local bearer tokens are now guarded by
+`bridge/local_url.py`. Scout Hunter, Scout Watch quote ingestion, CSU
+Realtime Lite, and the SnapTrade-to-bot handoff reject non-loopback destinations
+before reading or attaching the private bearer token.
+
+Allowed destinations are explicit `http` loopback hosts
+(`127.0.0.1`, `localhost`, or `::1`) with an explicit port.
+
+This prevents an accidentally or maliciously changed environment URL from
+forwarding `CSU_SNAPSHOT_TOKEN` to an external host.
