@@ -9,6 +9,7 @@ from scout_independent_news import (
     build_google_news_url,
     choose_news_batch,
     classify_headline,
+    mark_alert_escalated,
     parse_google_news_rss,
     run_news_cycle,
 )
@@ -88,6 +89,24 @@ class IndependentNewsTests(unittest.TestCase):
         alert = saved["alerts"][0]
         self.assertEqual(alert["status"], "NEWS_REVIEW_REQUIRED")
         self.assertFalse(alert["userConfirmedMaterial"])
+        self.assertFalse(alert["tradeEligible"])
+        self.assertFalse(alert["brokerSubmissionEnabled"])
+
+    def test_mark_alert_escalated_is_durable_and_non_tradeable(self):
+        self.alerts.write_text(__import__("json").dumps({
+            "version": 1,
+            "alerts": [{
+                "id": "news-1",
+                "symbol": "AAA:TSX",
+                "status": "NEWS_REVIEW_REQUIRED",
+                "userConfirmedMaterial": False,
+                "tradeEligible": False,
+                "brokerSubmissionEnabled": False,
+            }],
+        }), encoding="utf-8")
+        alert = mark_alert_escalated("news-1", alert_path=self.alerts)
+        self.assertEqual(alert["status"], "ESCALATED_TO_RECHECK")
+        self.assertTrue(alert["userConfirmedMaterial"])
         self.assertFalse(alert["tradeEligible"])
         self.assertFalse(alert["brokerSubmissionEnabled"])
 
