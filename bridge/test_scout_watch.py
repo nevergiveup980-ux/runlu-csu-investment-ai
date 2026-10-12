@@ -1,9 +1,12 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
-from scout_watch import ScoutWatchError, bounded_poll_seconds, process_observation, watch_symbols
+from scout_watch import ScoutWatchError, bounded_poll_seconds, market_monitor_window, process_observation, run_once, watch_symbols
 
 
 class ScoutWatchTests(unittest.TestCase):
@@ -52,6 +55,13 @@ class ScoutWatchTests(unittest.TestCase):
         with self.assertRaises(ScoutWatchError):
             bounded_poll_seconds(301)
 
+    def test_market_monitor_window_is_weekday_tsx_hours_only(self):
+        toronto = ZoneInfo("America/Toronto")
+        self.assertTrue(market_monitor_window(datetime(2026, 10, 13, 10, 0, tzinfo=toronto)))
+        self.assertFalse(market_monitor_window(datetime(2026, 10, 13, 8, 0, tzinfo=toronto)))
+        self.assertFalse(market_monitor_window(datetime(2026, 10, 13, 16, 30, tzinfo=toronto)))
+        self.assertFalse(market_monitor_window(datetime(2026, 10, 11, 10, 0, tzinfo=toronto)))
+
     def test_only_finalized_watch_and_approved_are_monitored(self):
         self.assertEqual(watch_symbols(self.registry), ["AAA:TSX", "BBB:TSX"])
 
@@ -85,6 +95,18 @@ class ScoutWatchTests(unittest.TestCase):
         self.assertTrue(result["recheckRequired"])
         self.assertIn("EVENT:GUIDANCE", result["reasons"])
         self.assertFalse(result["tradeEligible"])
+
+    def test_run_once_skips_provider_outside_market_window(self):
+        toronto = ZoneInfo("America/Toronto")
+        with patch("scout_watch.watch_symbols", return_value=["AAA:TSX"]),              patch("scout_watch.process_observations") as process:
+            called = {"count": 0}
+            def observer(symbols):
+                called["count"] += 1
+                return []
+            result = run_once(observer, now=datetime(2026, 10, 13, 8, 0, tzinfo=toronto))
+        self.assertFalse(result["ran"])
+        self.assertEqual(called["count"], 0)
+        process.assert_not_called()
 
     def test_non_watch_symbol_is_ignored(self):
         result = process_observation(
