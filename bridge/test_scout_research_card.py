@@ -75,6 +75,43 @@ class ScoutResearchCardTests(unittest.TestCase):
         self.assertEqual(status["missing"], [])
         self.assertFalse(status["tradeEligible"])
 
+    def test_card_hydrates_archived_assistant_research_without_user_confirmation(self):
+        candidate = self.candidate()
+        candidate["researchStatus"] = "ASSISTANT_COMPLETE_AWAITING_USER"
+        candidate["researchDraft"] = {
+            "digest": "a" * 64,
+            "archiveVersion": 2,
+            "completedAt": "2026-10-12T12:00:00Z",
+            "assistantResearchComplete": True,
+            "userConfirmed": False,
+            "finalDecision": None,
+            "evidence": {"sourceCount": 3},
+            "research": {
+                "business_model": "Business",
+                "financial_quality": "Financials",
+                "valuation": "Valuation",
+                "industry_and_competition": "Industry",
+                "management_and_governance": "Management",
+                "recent_news_and_catalysts": "News",
+                "bull_case": "Bull",
+                "bear_case": "Bear",
+                "key_risks": ["Risk"],
+                "what_could_make_us_wrong": "Wrong",
+                "invalidation_condition": "Invalidation",
+                "sources": [
+                    {"type": "REGULATORY_FILING", "title": "Filing", "url": "https://example.com/f", "publishedAt": "2026-01-01T00:00:00Z", "notes": "Primary"},
+                    {"type": "COMPANY_IR", "title": "IR", "url": "https://example.com/i", "publishedAt": "2026-01-02T00:00:00Z", "notes": "Primary"},
+                    {"type": "NEWS", "title": "News", "url": "https://example.com/n", "publishedAt": "2026-01-03T00:00:00Z", "notes": "Independent"},
+                ],
+            },
+        }
+        card = build_research_card(candidate)
+        self.assertTrue(card["decision"]["assistantResearchComplete"])
+        self.assertFalse(card["decision"]["userConfirmed"])
+        self.assertEqual(card["researchWriteback"]["status"], "ASSISTANT_COMPLETE_AWAITING_USER")
+        self.assertEqual(card["researchWriteback"]["archiveVersion"], 2)
+        self.assertFalse(card["authority"]["tradeEligible"])
+
     def test_pass_candidates_are_omitted_from_card_batch(self):
         passed = self.candidate()
         passed["stage"] = "PASS"
