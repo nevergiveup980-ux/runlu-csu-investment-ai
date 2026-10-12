@@ -21,12 +21,14 @@ class ScoutResearchCardTests(unittest.TestCase):
         self.assertFalse(card["decision"]["userConfirmed"])
         self.assertFalse(card["authority"]["tradeEligible"])
         self.assertFalse(card["authority"]["brokerSubmissionEnabled"])
+        self.assertEqual(card["researchAgenda"]["purpose"], "JOINT_DUE_DILIGENCE")
 
         status = card_completion(card)
         self.assertFalse(status["complete"])
         self.assertIn("bull_case", status["missing"])
         self.assertIn("bear_case", status["missing"])
         self.assertFalse(status["tradeEligible"])
+        self.assertFalse(status["brokerSubmissionEnabled"])
 
     def test_completion_requires_research_sections_and_sources(self):
         card = build_research_card(self.candidate())
@@ -44,7 +46,29 @@ class ScoutResearchCardTests(unittest.TestCase):
         ):
             card["research"][key] = "Synthetic research"
         card["research"]["key_risks"] = ["Synthetic risk"]
-        card["research"]["sources"] = ["source-1", "source-2"]
+        card["research"]["sources"] = [
+            {
+                "type": "REGULATORY_FILING",
+                "title": "Synthetic filing",
+                "url": "https://example.com/filing",
+                "publishedAt": "2026-01-01T00:00:00Z",
+                "notes": "Primary evidence",
+            },
+            {
+                "type": "COMPANY_IR",
+                "title": "Synthetic IR",
+                "url": "https://example.com/ir",
+                "publishedAt": "2026-01-02T00:00:00Z",
+                "notes": "Management evidence",
+            },
+            {
+                "type": "NEWS",
+                "title": "Synthetic news",
+                "url": "https://example.com/news",
+                "publishedAt": "2026-01-03T00:00:00Z",
+                "notes": "Independent evidence",
+            },
+        ]
 
         status = card_completion(card)
         self.assertTrue(status["complete"])
