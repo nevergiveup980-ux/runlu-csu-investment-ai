@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 
 from scout_hunter import run_cycle
 from scout_registry import DEFAULT_REGISTRY, ranked_candidates
+from scout_research_card import build_cards
 
 TORONTO = ZoneInfo("America/Toronto")
 DAILY_STATE = Path(".csu-private") / "scout-daily-state.json"
@@ -132,6 +133,7 @@ def run_daily_research(
 
     ranked = ranked_candidates(registry_path)
     queue = research_queue(ranked, 5)
+    cards = build_cards(ranked, 5)
     generated_at = current.isoformat()
 
     report = {
@@ -142,6 +144,7 @@ def run_daily_research(
         "batches": batches,
         "symbolsScanned": [symbol for cycle in cycles for symbol in cycle.get("scanned", [])],
         "top5": queue,
+        "researchCards": cards,
         "policy": {
             "csuPrimary": True,
             "jointResearchRequired": True,
