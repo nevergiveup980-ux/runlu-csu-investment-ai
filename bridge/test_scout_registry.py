@@ -6,6 +6,7 @@ from scout_registry import (
     ScoutRegistryError,
     apply_joint_review,
     execution_eligible_symbols,
+    flag_material_recheck,
     ranked_candidates,
     record_assistant_research,
     record_scan,
@@ -182,6 +183,49 @@ class ScoutRegistryTests(unittest.TestCase):
         self.assertEqual(rescanned["researchStatus"], "FINALIZED")
         self.assertEqual(len(rescanned["decisionHistory"]), 1)
         self.assertEqual(rescanned["decisionHistory"][0]["finalDecision"], "WATCH")
+
+    def test_material_event_reopens_watch_for_joint_research(self):
+        draft = self.seed_completed_research()["researchDraft"]
+        apply_joint_review(
+            "SYNTH:TSX",
+            {
+                "user_confirmed": True,
+                "final_decision": "WATCH",
+                "research_digest": draft["digest"],
+            },
+            self.path,
+        )
+        row = flag_material_recheck(
+            "SYNTH:TSX",
+            events=[{"type": "EARNINGS"}],
+            path=self.path,
+        )
+        self.assertEqual(row["stage"], "RECHECK_REQUIRED")
+        self.assertEqual(row["researchStatus"], "RECHECK_REQUIRED")
+        self.assertEqual(row["previousStageBeforeRecheck"], "WATCH")
+        self.assertFalse(row["realtimeEligible"])
+        self.assertFalse(row["tradeEligible"])
+        self.assertIn("EVENT:EARNINGS", row["recheck"]["reasons"])
+
+    def test_rescan_score_change_reopens_finalized_candidate(self):
+        draft = self.seed_completed_research()["researchDraft"]
+        apply_joint_review(
+            "SYNTH:TSX",
+            {
+                "user_confirmed": True,
+                "final_decision": "APPROVED",
+                "research_digest": draft["digest"],
+            },
+            self.path,
+        )
+        scan = self.scan()
+        scan["candidates"][0]["score"] = 99
+        row = record_scan(scan, self.path)["candidates"]["SYNTH:TSX"]
+        self.assertEqual(row["stage"], "RECHECK_REQUIRED")
+        self.assertEqual(row["previousStageBeforeRecheck"], "APPROVED_UNIVERSE")
+        self.assertFalse(row["realtimeEligible"])
+        self.assertFalse(row["tradeEligible"])
+        self.assertTrue(any(x.startswith("SCOUT_SCORE_MOVE:") for x in row["recheck"]["reasons"]))
 
     def test_ranked_candidates_orders_by_latest_score(self):
         scan = self.scan()
