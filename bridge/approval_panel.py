@@ -303,6 +303,7 @@ class PanelState:
                 "automatic_promotion": False,
                 "source_policy": agenda.get("evidenceRequirements") or {},
                 "archive_version": draft.get("archiveVersion") or final_research.get("archiveVersion"),
+                "recheck": current.get("recheck") if isinstance(current.get("recheck"), dict) else None,
             })
         return safe
 
@@ -443,6 +444,7 @@ function renderResearch(x){{
  const title=document.createElement("div");title.className="action";title.textContent=x.symbol+" · "+esc(x.score);c.append(title);
  const g=document.createElement("div");g.className="grid";
  g.append(cell("Tier",x.tier),cell("Stage",x.stage),cell("Research Status",x.research_status||"PENDING"),cell("Trade Eligible","NO"));c.append(g);
+ if(x.recheck?.reasons?.length){{const b=document.createElement("div");b.className="banner";b.innerHTML="<b>RECHECK REQUIRED / 需要重新调研</b>";const ul=document.createElement("ul");x.recheck.reasons.forEach(r=>{{const li=document.createElement("li");li.textContent=esc(r);ul.append(li)}});b.append(ul);c.append(b)}}
  if(x.reasons?.length){{const h=document.createElement("div");h.className="k";h.style.marginTop="14px";h.textContent="Why Scout found it";c.append(h);const ul=document.createElement("ul");x.reasons.forEach(r=>{{const li=document.createElement("li");li.textContent=esc(r);ul.append(li)}});c.append(ul)}}
  if(x.risk_flags?.length){{const h=document.createElement("div");h.className="k";h.textContent="Risk flags";c.append(h);const ul=document.createElement("ul");x.risk_flags.forEach(r=>{{const li=document.createElement("li");li.textContent=esc(r);ul.append(li)}});c.append(ul)}}
  if(x.questions?.length){{const d=document.createElement("details");const s=document.createElement("summary");s.textContent="Research questions / 调研问题";d.append(s);const ul=document.createElement("ul");x.questions.forEach(q=>{{const li=document.createElement("li");li.textContent=esc(q);ul.append(li)}});d.append(ul);c.append(d)}}
