@@ -8,6 +8,7 @@ export type PrivatePortfolioEnv = {
   PRIVATE_PORTFOLIO?: PortfolioKV;
   PRIVATE_PORTFOLIO_USERNAME?: string;
   PRIVATE_PORTFOLIO_PASSWORD_HASH?: string;
+  PRIVATE_PORTFOLIO_PASSWORD_SALT?: string;
   PRIVATE_SESSION_SECRET?: string;
 };
 
@@ -47,6 +48,31 @@ function fromBase64Url(value: string): Uint8Array {
 export async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", enc.encode(value));
   return bytesToHex(new Uint8Array(digest));
+}
+
+export async function pbkdf2Hex(
+  password: string,
+  salt: string,
+  iterations = 210_000,
+): Promise<string> {
+  const material = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      salt: enc.encode(salt),
+      iterations,
+    },
+    material,
+    256,
+  );
+  return bytesToHex(new Uint8Array(bits));
 }
 
 export function constantTimeEqual(a: string, b: string): boolean {
@@ -161,8 +187,9 @@ export async function verifyPrivateLogin(
 ): Promise<boolean> {
   const expectedUser = String(env.PRIVATE_PORTFOLIO_USERNAME || "");
   const expectedHash = String(env.PRIVATE_PORTFOLIO_PASSWORD_HASH || "").toLowerCase();
-  if (!expectedUser || !/^[a-f0-9]{64}$/.test(expectedHash)) return false;
-  const actualHash = await sha256Hex(String(password || ""));
+  const salt = String(env.PRIVATE_PORTFOLIO_PASSWORD_SALT || "");
+  if (!expectedUser || !salt || !/^[a-f0-9]{64}$/.test(expectedHash)) return false;
+  const actualHash = await pbkdf2Hex(String(password || ""), salt);
   return constantTimeEqual(String(username || ""), expectedUser)
     && constantTimeEqual(actualHash, expectedHash);
 }
@@ -172,6 +199,7 @@ export function privatePortfolioConfigured(env: PrivatePortfolioEnv): boolean {
     env.PRIVATE_PORTFOLIO
     && env.PRIVATE_PORTFOLIO_USERNAME
     && env.PRIVATE_PORTFOLIO_PASSWORD_HASH
+    && env.PRIVATE_PORTFOLIO_PASSWORD_SALT
     && env.PRIVATE_SESSION_SECRET,
   );
 }
