@@ -7,6 +7,7 @@ import { scoreScoutCandidate } from "./scout";
 import { buildScoutUniverse, type StockCatalogRow } from "./scout-universe";
 import { normalizeWatchRequest } from "./scout-watch-feed";
 import { normalizeEventSymbols, normalizeMaterialEvent, type PressReleaseLike } from "./scout-event-radar";
+import { createSessionToken, getCookie, privatePortfolioConfigured, sanitizePrivatePortfolioSnapshot, sha256Hex, verifyPrivateLogin, verifySessionToken } from "./private-portfolio";
 
 type Candle = {
   datetime: string;
@@ -42,6 +43,24 @@ const json = (data: unknown, status = 200, cache = "public, max-age=900") =>
       "access-control-allow-origin": "*",
     },
   });
+
+const privateJson = (data: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store, private",
+      "pragma": "no-cache",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "no-referrer",
+      ...extraHeaders,
+    },
+  });
+
+const PRIVATE_SESSION_COOKIE = "runlu_private_session";
+const PRIVATE_SNAPSHOT_KEY = "private:portfolio:latest";
+const PRIVATE_SESSION_TTL = 8 * 60 * 60;
 
 const avg = (xs: number[]) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
 
@@ -341,6 +360,178 @@ export default {
           });
         }
       }
+      if (url.pathname === "/api/private/login" && request.method === "POST") {
+        const privateEnv = env as Env & {
+          PRIVATE_PORTFOLIO_USERNAME?: string;
+          PRIVATE_PORTFOLIO_PASSWORD_HASH?: string;
+          PRIVATE_SESSION_SECRET?: string;
+          PRIVATE_PORTFOLIO?: {
+            get(key: string): Promise<string | null>;
+            put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+            delete(key: string): Promise<void>;
+          };
+        };
+        if (!privatePortfolioConfigured(privateEnv)) {
+          return privateJson({ error: "Private portfolio is not configured" }, 503);
+        }
+
+        const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+        const ipHash = await sha256Hex(ip);
+        const attemptKey = "private:login:" + ipHash;
+        const priorRaw = await privateEnv.PRIVATE_PORTFOLIO!.get(attemptKey);
+        const prior = Math.max(0, Number(priorRaw || "0") || 0);
+        if (prior >= 5) {
+          return privateJson({ error: "Too many login attempts. Try again later." }, 429);
+        }
+
+        let body: { username?: string; password?: string };
+        try {
+          body = await request.json() as typeof body;
+        } catch {
+          return privateJson({ error: "Invalid login request" }, 400);
+        }
+        const ok = await verifyPrivateLogin(
+          String(body.username || ""),
+          String(body.password || ""),
+          privateEnv,
+        );
+        if (!ok) {
+          await privateEnv.PRIVATE_PORTFOLIO!.put(attemptKey, String(prior + 1), { expirationTtl: 900 });
+          return privateJson({ error: "Invalid username or password" }, 401);
+        }
+
+        await privateEnv.PRIVATE_PORTFOLIO!.delete(attemptKey);
+        const token = await createSessionToken(
+          privateEnv.PRIVATE_PORTFOLIO_USERNAME!,
+          privateEnv.PRIVATE_SESSION_SECRET!,
+          Math.floor(Date.now() / 1000),
+          PRIVATE_SESSION_TTL,
+        );
+        return privateJson(
+          { ok: true, expiresInSeconds: PRIVATE_SESSION_TTL },
+          200,
+          {
+            "set-cookie": `${PRIVATE_SESSION_COOKIE}=${token}; Max-Age=${PRIVATE_SESSION_TTL}; Path=/api/private; HttpOnly; Secure; SameSite=Strict`,
+          },
+        );
+      }
+
+      if (url.pathname === "/api/private/logout" && request.method === "POST") {
+        return privateJson(
+          { ok: true },
+          200,
+          {
+            "set-cookie": `${PRIVATE_SESSION_COOKIE}=; Max-Age=0; Path=/api/private; HttpOnly; Secure; SameSite=Strict`,
+          },
+        );
+      }
+
+      if (url.pathname === "/api/private/session" && request.method === "GET") {
+        const privateEnv = env as Env & {
+          PRIVATE_PORTFOLIO_USERNAME?: string;
+          PRIVATE_SESSION_SECRET?: string;
+        };
+        if (!privateEnv.PRIVATE_PORTFOLIO_USERNAME || !privateEnv.PRIVATE_SESSION_SECRET) {
+          return privateJson({ authenticated: false }, 503);
+        }
+        const token = getCookie(request, PRIVATE_SESSION_COOKIE);
+        const authenticated = token
+          ? await verifySessionToken(
+              token,
+              privateEnv.PRIVATE_PORTFOLIO_USERNAME,
+              privateEnv.PRIVATE_SESSION_SECRET,
+            )
+          : false;
+        return privateJson({ authenticated }, authenticated ? 200 : 401);
+      }
+
+      if (url.pathname === "/api/private/portfolio" && request.method === "GET") {
+        const privateEnv = env as Env & {
+          PRIVATE_PORTFOLIO_USERNAME?: string;
+          PRIVATE_SESSION_SECRET?: string;
+          PRIVATE_PORTFOLIO?: { get(key: string): Promise<string | null> };
+        };
+        if (!privateEnv.PRIVATE_PORTFOLIO || !privateEnv.PRIVATE_PORTFOLIO_USERNAME || !privateEnv.PRIVATE_SESSION_SECRET) {
+          return privateJson({ error: "Private portfolio is not configured" }, 503);
+        }
+        const token = getCookie(request, PRIVATE_SESSION_COOKIE);
+        const authenticated = token
+          ? await verifySessionToken(
+              token,
+              privateEnv.PRIVATE_PORTFOLIO_USERNAME,
+              privateEnv.PRIVATE_SESSION_SECRET,
+            )
+          : false;
+        if (!authenticated) return privateJson({ error: "Authentication required" }, 401);
+
+        const raw = await privateEnv.PRIVATE_PORTFOLIO.get(PRIVATE_SNAPSHOT_KEY);
+        if (!raw) return privateJson({ error: "No private portfolio snapshot is available yet" }, 404);
+        let snapshot: unknown;
+        try {
+          snapshot = JSON.parse(raw);
+        } catch {
+          return privateJson({ error: "Stored portfolio snapshot is invalid" }, 500);
+        }
+        return privateJson({
+          mode: "PRIVATE_READ_ONLY",
+          portfolio: snapshot,
+          permissions: {
+            viewPortfolio: true,
+            approveTrade: false,
+            placeOrder: false,
+            modifyOrder: false,
+            cancelOrder: false,
+          },
+        });
+      }
+
+      if (url.pathname === "/api/private/snapshot" && request.method === "POST") {
+        const privateEnv = env as Env & {
+          CSU_SNAPSHOT_TOKEN?: string;
+          PRIVATE_PORTFOLIO?: { put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> };
+        };
+        const secret = privateEnv.CSU_SNAPSHOT_TOKEN;
+        if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
+          return privateJson({ error: "Private snapshot upload unavailable" }, 403);
+        }
+        if (!privateEnv.PRIVATE_PORTFOLIO) {
+          return privateJson({ error: "Private portfolio storage is not configured" }, 503);
+        }
+
+        let raw: unknown;
+        try {
+          raw = await request.json();
+        } catch {
+          return privateJson({ error: "Invalid portfolio snapshot JSON" }, 400);
+        }
+
+        let snapshot;
+        try {
+          snapshot = sanitizePrivatePortfolioSnapshot(raw);
+        } catch (error) {
+          return privateJson({ error: String(error) }, 422);
+        }
+        const fetchedMs = Date.parse(snapshot.fetchedAt);
+        const now = Date.now();
+        if (fetchedMs > now + 5 * 60 * 1000 || fetchedMs < now - 30 * 60 * 1000) {
+          return privateJson({ error: "Portfolio snapshot is outside the accepted freshness window" }, 422);
+        }
+
+        await privateEnv.PRIVATE_PORTFOLIO.put(
+          PRIVATE_SNAPSHOT_KEY,
+          JSON.stringify(snapshot),
+          { expirationTtl: 7 * 24 * 60 * 60 },
+        );
+        return privateJson({
+          ok: true,
+          storedAt: new Date().toISOString(),
+          fetchedAt: snapshot.fetchedAt,
+          positions: snapshot.positions.length,
+          tradeEligible: false,
+          brokerSubmissionEnabled: false,
+        });
+      }
+
       if (url.pathname === "/api/health") {
         return json({
           ok: true,
