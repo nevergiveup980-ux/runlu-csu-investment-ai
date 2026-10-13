@@ -24,6 +24,7 @@ button{appearance:none;border:1px solid #3d4953;background:#171d22;color:#f4f7f5
   <div class="brand">RUNLU · PRIVATE READ-ONLY</div>
   <div class="title">Private Portfolio / 私人账户</div>
   <div class="sub">Funds & holdings only · no approval · no trading · no brokerage credentials</div>
+  <div class="small" id="systemStatus">Checking private service…</div>
 
   <div class="card" id="loginCard">
     <div class="k">Secure login</div>
@@ -94,6 +95,15 @@ function render(p){
    info.append(a,m);d.append(info);root.append(d);
  });
 }
+async function loadStatus(){
+ try{
+  const s=await api('/api/private/status');
+  $('systemStatus').textContent=s.ready
+    ? (s.snapshotAvailable?'PRIVATE SERVICE READY · snapshot available':'PRIVATE SERVICE READY · waiting for first snapshot')
+    : 'PRIVATE SERVICE SETUP INCOMPLETE';
+  $('systemStatus').className='small '+(s.ready?'ok':'err');
+ }catch(e){$('systemStatus').textContent='Private service status unavailable';$('systemStatus').className='small err'}
+}
 async function loadPortfolio(){
  try{const d=await api('/api/private/portfolio');showLoggedIn(true);render(d.portfolio)}catch(e){if(String(e.message).includes('Authentication'))showLoggedIn(false);else{$('freshness').textContent=String(e.message)}}
 }
@@ -107,7 +117,7 @@ $('login').onclick=async()=>{
 $('pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('login').click()});
 $('refresh').onclick=loadPortfolio;
 $('logout').onclick=async()=>{try{await api('/api/private/logout',{method:'POST'})}catch{}showLoggedIn(false)};
-(async()=>{try{const s=await api('/api/private/session');if(s.authenticated)await loadPortfolio();else showLoggedIn(false)}catch{showLoggedIn(false)}})();
+(async()=>{await loadStatus();try{const s=await api('/api/private/session');if(s.authenticated)await loadPortfolio();else showLoggedIn(false)}catch{showLoggedIn(false)}})();
 </script>
 </body>
 </html>
