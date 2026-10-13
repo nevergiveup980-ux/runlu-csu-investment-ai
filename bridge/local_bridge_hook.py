@@ -9,6 +9,7 @@ and no order write/cancel methods.
 from snaptrade_handoff import cache_sanitized_snapshot, forward_snapshot
 from bot_review_hook import publish_review_response
 from review_candidate_handoff import request_and_publish_review
+from private_portfolio_upload import upload_snapshot as upload_private_portfolio_snapshot
 
 
 def publish_to_csu_bot(dashboard_payload):
@@ -29,3 +30,8 @@ def publish_review_candidate_to_local_panel(dashboard_payload, indicative_limit_
         indicative_limit_cad=indicative_limit_cad,
         expires_at=expires_at,
     )
+
+
+def publish_private_portfolio_to_phone(dashboard_payload):
+    """Upload only the minimized read-only portfolio view to the private phone API."""
+    return upload_private_portfolio_snapshot(dashboard_payload)
