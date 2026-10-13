@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>RUNLU Private Portfolio</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#f4f7f5;background:#0d1117}
+*{box-sizing:border-box}body{margin:0;background:#0d1117}.wrap{max-width:760px;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom))}
+.brand{font-size:12px;letter-spacing:.16em;color:#929d97}.title{font-size:30px;font-weight:760;margin:7px 0 4px}.sub{font-size:14px;color:#929d97;line-height:1.5}
+.card{background:#141a20;border:1px solid #27313a;border-radius:20px;padding:16px;margin-top:15px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:12px}
+.k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#87918c}.v{font-size:21px;font-weight:700;margin-top:6px}.small{font-size:13px;color:#9aa5a0;line-height:1.5;margin-top:5px}
+input{width:100%;border:1px solid #38444d;background:#0f1419;color:#fff;border-radius:14px;padding:13px 14px;font-size:16px;margin-top:7px}
+button{appearance:none;border:1px solid #3d4953;background:#171d22;color:#f4f7f5;border-radius:999px;padding:11px 15px;font:inherit}.primary{background:#f4f7f5;color:#111;border-color:#f4f7f5}
+.row{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.holding{padding:13px 0;border-top:1px solid #27313a}.holding:first-child{border-top:0}.holdingTop{display:flex;justify-content:space-between;gap:12px}.symbol{font-weight:720;font-size:18px}.pill{font-size:11px;border:1px solid #35424c;border-radius:999px;padding:5px 8px;color:#aeb8b3}
+.err{color:#ef8c8c}.ok{color:#64d599}.hidden{display:none}.foot{font-size:12px;color:#768079;line-height:1.55;margin-top:22px}
+@media(max-width:430px){.title{font-size:27px}.v{font-size:19px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">RUNLU · PRIVATE READ-ONLY</div>
+  <div class="title">Private Portfolio / 私人账户</div>
+  <div class="sub">Funds & holdings only · no approval · no trading · no brokerage credentials</div>
+
+  <div class="card" id="loginCard">
+    <div class="k">Secure login</div>
+    <div class="small">Server-side authentication. Your password is not stored in this page.</div>
+    <label class="small" for="user">Username</label>
+    <input id="user" autocomplete="username" autocapitalize="none">
+    <label class="small" for="pass">Password</label>
+    <input id="pass" type="password" autocomplete="current-password">
+    <div class="row"><button class="primary" id="login">LOGIN / 登录</button></div>
+    <div class="small err" id="loginError"></div>
+  </div>
+
+  <div id="portfolio" class="hidden">
+    <div class="card">
+      <div class="grid">
+        <div><div class="k">Estimated Equity</div><div class="v" id="equity">—</div></div>
+        <div><div class="k">Cash</div><div class="v" id="cash">—</div></div>
+        <div><div class="k">Buying Power</div><div class="v" id="buyingPower">—</div></div>
+        <div><div class="k">Open Orders</div><div class="v" id="orders">—</div></div>
+      </div>
+      <div class="small" id="freshness">—</div>
+      <div class="row"><button id="refresh">REFRESH / 刷新</button><button id="logout">LOG OUT / 退出</button></div>
+    </div>
+
+    <div class="card">
+      <div class="k">Holdings / 持仓</div>
+      <div id="holdings"><div class="small">No holdings loaded.</div></div>
+    </div>
+
+    <div class="card">
+      <div class="k">Permission boundary</div>
+      <div class="small ok">VIEW PORTFOLIO · ENABLED</div>
+      <div class="small">APPROVE TRADE · DISABLED</div>
+      <div class="small">PLACE / MODIFY / CANCEL ORDER · DISABLED</div>
+    </div>
+  </div>
+
+  <div class="foot">This page receives a minimized snapshot only: currency, cash, buying power, position symbol/quantity/average cost/market value, open-order count, and snapshot time. Account IDs, transaction history, credentials, tokens, and order details are not published to the phone view.</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const money=(n,c='CAD')=>n==null?'—':new Intl.NumberFormat(undefined,{style:'currency',currency:c,maximumFractionDigits:2}).format(Number(n));
+const num=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:4});
+async function api(path,options={}){
+ const r=await fetch(path,{cache:'no-store',credentials:'same-origin',...options});
+ let d={};try{d=await r.json()}catch{}
+ if(!r.ok)throw new Error(d.error||('Request failed '+r.status));
+ return d;
+}
+function showLoggedIn(v){$('loginCard').classList.toggle('hidden',v);$('portfolio').classList.toggle('hidden',!v)}
+function render(p){
+ const c=p.currency||'CAD';
+ $('equity').textContent=money(p.estimatedEquity,c);$('cash').textContent=money(p.cash,c);$('buyingPower').textContent=money(p.buyingPower,c);$('orders').textContent=String(p.openOrderCount??0);
+ const t=new Date(p.fetchedAt),mins=Math.max(0,(Date.now()-t.getTime())/60000);
+ $('freshness').textContent='Snapshot '+t.toLocaleString()+' · '+Math.round(mins)+' min old';
+ const root=$('holdings');root.replaceChildren();
+ const rows=Array.isArray(p.positions)?p.positions:[];
+ if(!rows.length){const x=document.createElement('div');x.className='small';x.textContent='No holdings in latest snapshot.';root.append(x);return}
+ rows.forEach(x=>{
+   const d=document.createElement('div');d.className='holding';
+   const top=document.createElement('div');top.className='holdingTop';
+   const s=document.createElement('div');s.className='symbol';s.textContent=x.symbol||'—';
+   const q=document.createElement('div');q.className='pill';q.textContent='Qty '+num(x.quantity);
+   top.append(s,q);d.append(top);
+   const info=document.createElement('div');info.className='grid';
+   const a=document.createElement('div');a.innerHTML='<div class="k">Average Cost</div><div class="v">'+money(x.averageCost,c)+'</div>';
+   const m=document.createElement('div');m.innerHTML='<div class="k">Market Value</div><div class="v">'+money(x.marketValue,c)+'</div>';
+   info.append(a,m);d.append(info);root.append(d);
+ });
+}
+async function loadPortfolio(){
+ try{const d=await api('/api/private/portfolio');showLoggedIn(true);render(d.portfolio)}catch(e){if(String(e.message).includes('Authentication'))showLoggedIn(false);else{$('freshness').textContent=String(e.message)}}
+}
+$('login').onclick=async()=>{
+ $('loginError').textContent='';
+ try{
+  await api('/api/private/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:$('user').value,password:$('pass').value})});
+  $('pass').value='';await loadPortfolio();
+ }catch(e){$('loginError').textContent=String(e.message)}
+};
+$('pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('login').click()});
+$('refresh').onclick=loadPortfolio;
+$('logout').onclick=async()=>{try{await api('/api/private/logout',{method:'POST'})}catch{}showLoggedIn(false)};
+(async()=>{try{const s=await api('/api/private/session');if(s.authenticated)await loadPortfolio();else showLoggedIn(false)}catch{showLoggedIn(false)}})();
+</script>
+</body>
+</html>
