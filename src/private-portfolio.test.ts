@@ -1,9 +1,9 @@
 import {
   constantTimeEqual,
   createSessionToken,
+  pbkdf2Hex,
   privatePortfolioConfigured,
   sanitizePrivatePortfolioSnapshot,
-  sha256Hex,
   verifyPrivateLogin,
   verifySessionToken,
 } from "./private-portfolio";
@@ -13,7 +13,8 @@ const expect = (condition: unknown, message: string) => {
 };
 
 const password = "synthetic-strong-password";
-const passwordHash = await sha256Hex(password);
+const passwordSalt = "synthetic-random-salt";
+const passwordHash = await pbkdf2Hex(password, passwordSalt);
 const env = {
   PRIVATE_PORTFOLIO: {
     async get() { return null; },
@@ -22,6 +23,7 @@ const env = {
   },
   PRIVATE_PORTFOLIO_USERNAME: "john",
   PRIVATE_PORTFOLIO_PASSWORD_HASH: passwordHash,
+  PRIVATE_PORTFOLIO_PASSWORD_SALT: passwordSalt,
   PRIVATE_SESSION_SECRET: "synthetic-session-secret-with-length",
 };
 
