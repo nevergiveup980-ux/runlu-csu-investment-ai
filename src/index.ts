@@ -364,6 +364,7 @@ export default {
         const privateEnv = env as Env & {
           PRIVATE_PORTFOLIO_USERNAME?: string;
           PRIVATE_PORTFOLIO_PASSWORD_HASH?: string;
+          PRIVATE_PORTFOLIO_PASSWORD_SALT?: string;
           PRIVATE_SESSION_SECRET?: string;
           PRIVATE_PORTFOLIO?: {
             get(key: string): Promise<string | null>;
