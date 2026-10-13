@@ -360,6 +360,56 @@ export default {
           });
         }
       }
+      if (url.pathname === "/api/private/status" && request.method === "GET") {
+        const privateEnv = env as Env & {
+          PRIVATE_PORTFOLIO_USERNAME?: string;
+          PRIVATE_PORTFOLIO_PASSWORD_HASH?: string;
+          PRIVATE_PORTFOLIO_PASSWORD_SALT?: string;
+          PRIVATE_SESSION_SECRET?: string;
+          PRIVATE_SNAPSHOT_UPLOAD_TOKEN?: string;
+          PRIVATE_PORTFOLIO?: { get(key: string): Promise<string | null> };
+        };
+        const authConfigured = Boolean(
+          privateEnv.PRIVATE_PORTFOLIO_USERNAME
+          && privateEnv.PRIVATE_PORTFOLIO_PASSWORD_HASH
+          && privateEnv.PRIVATE_PORTFOLIO_PASSWORD_SALT
+          && privateEnv.PRIVATE_SESSION_SECRET,
+        );
+        const storageConfigured = Boolean(privateEnv.PRIVATE_PORTFOLIO);
+        const uploadConfigured = Boolean(privateEnv.PRIVATE_SNAPSHOT_UPLOAD_TOKEN);
+        let snapshotAvailable = false;
+        let snapshotFetchedAt: string | null = null;
+        if (storageConfigured) {
+          try {
+            const raw = await privateEnv.PRIVATE_PORTFOLIO!.get(PRIVATE_SNAPSHOT_KEY);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              snapshotAvailable = true;
+              snapshotFetchedAt = typeof parsed?.fetchedAt === "string" ? parsed.fetchedAt : null;
+            }
+          } catch {
+            snapshotAvailable = false;
+          }
+        }
+        return privateJson({
+          product: "RUNLU Private Portfolio",
+          mode: "PRIVATE_READ_ONLY",
+          ready: authConfigured && storageConfigured && uploadConfigured,
+          authConfigured,
+          storageConfigured,
+          uploadConfigured,
+          snapshotAvailable,
+          snapshotFetchedAt,
+          permissions: {
+            viewPortfolio: true,
+            approveTrade: false,
+            placeOrder: false,
+            modifyOrder: false,
+            cancelOrder: false,
+          },
+        });
+      }
+
       if (url.pathname === "/api/private/login" && request.method === "POST") {
         const privateEnv = env as Env & {
           PRIVATE_PORTFOLIO_USERNAME?: string;
