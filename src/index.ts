@@ -487,10 +487,10 @@ export default {
 
       if (url.pathname === "/api/private/snapshot" && request.method === "POST") {
         const privateEnv = env as Env & {
-          CSU_SNAPSHOT_TOKEN?: string;
+          PRIVATE_SNAPSHOT_UPLOAD_TOKEN?: string;
           PRIVATE_PORTFOLIO?: { put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> };
         };
-        const secret = privateEnv.CSU_SNAPSHOT_TOKEN;
+        const secret = privateEnv.PRIVATE_SNAPSHOT_UPLOAD_TOKEN;
         if (!secret || request.headers.get("Authorization") !== `Bearer ${secret}`) {
           return privateJson({ error: "Private snapshot upload unavailable" }, 403);
         }
