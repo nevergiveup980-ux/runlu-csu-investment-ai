@@ -1,25 +1,46 @@
-# RUNLU CSU Investment AI V1.0
+# RUNLU CSU Investment AI — CSU Bot V2
 
-A read-only research dashboard for **Constellation Software Inc. (TSX: CSU)**.
+A CSU-focused research and experimental trading assistant for **Constellation Software Inc. (TSX: CSU)**.
 
-## V1 core
+## V2 direction
 
-- Daily / 1H / 15m / 5m market views
-- SMA20 / SMA50
-- RSI14
-- MACD + signal
-- ATR14
-- 20-period support / resistance
-- Relative volume
-- Rule-based stance: Bullish / Neutral / Caution
+The robot now has a **three-share experimental architecture**:
 
-## Architecture
+- 1 Core share
+- 1 Swing share
+- 1 Reserve share
+- Adaptive Swing strategy
+- Cash is a valid position
+- No requirement to trade every day
+- Intraday trading is secondary, not the primary strategy
 
-- GitHub stores the project and static dashboard.
-- Cloudflare Worker securely calls the market-data provider.
-- `TWELVE_DATA_API_KEY` must be stored as a Cloudflare secret and must never be committed to GitHub.
-- V1 is research-only and never places trades.
+## Safety first
 
-## Deployment
+This branch is still **PAPER / PREVIEW ONLY**.
 
-The static dashboard can be published with GitHub Pages. Live CSU data is supplied by the Cloudflare Worker API.
+- Maximum authorized position: 3 shares
+- Maximum proposed change per decision: 1 share
+- No shorting
+- No margin / leverage
+- No options
+- No live order placement
+- No order modification or cancellation
+- Risk Engine checks every proposed action
+- Kill Switch remains armed
+
+## API
+
+- `GET /api/health`
+- `GET /api/csu`
+- `GET /api/bot/status`
+- `GET /api/bot/preview?shares=1&cash=6000`
+
+The preview endpoint uses current CSU indicators to generate a paper-only BUY / SELL / HOLD decision.
+
+## Broker roadmap
+
+The broker layer is intentionally separated from the strategy layer. The next milestone is a read-only SnapTrade/Webull connection for account health, cash, positions, open orders and history.
+
+Real credentials must never be committed. Local secret values belong in `.env.local` or deployment secrets. `.env.example` contains placeholders only.
+
+See `CSU_BOT_V2.md` for the strategy and safety design.

@@ -1,15 +1,17 @@
 {
-  "name": "runlu-csu-investment-ai-v1",
-  "version": "1.0.0",
+  "name": "runlu-csu-investment-ai-v2",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:safety": "tsx src/trade-proposal.test.ts && tsx src/order-lifecycle.test.ts && tsx src/execution-preflight.test.ts && tsx src/review-packet.test.ts && tsx src/scout.test.ts && tsx src/scout-universe.test.ts && tsx src/scout-watch-feed.test.ts && tsx src/scout-event-radar.test.ts && tsx src/private-portfolio.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.2",
-    "wrangler": "^4.28.1"
+    "wrangler": "^4.28.1",
+    "tsx": "^4.20.6"
   }
 }

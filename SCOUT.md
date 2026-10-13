@@ -1,0 +1,660 @@
+# RUNLU Scout V1
+
+RUNLU Scout V1 adds **research discovery and screening** beside the CSU-first
+trading assistant. CSU remains the primary strategy and execution candidate.
+
+Scout V1 does **not** trade. It cannot create brokerage orders and it cannot make
+another stock execution-eligible by itself.
+
+## Mission
+
+Scout answers only:
+
+> Which stocks in a small curated TSX universe deserve our next round of
+> research?
+
+It does not answer:
+
+> Which stock should be bought automatically?
+
+## V1 screening flow
+
+```text
+Curated TSX universe (1-8 symbols per scan)
+        |
+Daily technical history
+        |
+Scout score 0-100
+        |
+PRIORITY_RESEARCH / RESEARCH / PASS_FOR_NOW
+        |
+RESEARCH_REQUIRED
+        |
+joint research by user + assistant
+        |
+PASS / WATCH / APPROVED_UNIVERSE
+        |
+still NOT trade eligible
+```
+
+The protected endpoint is:
+
+`POST /api/scout/scan`
+
+It requires the existing private bearer token and accepts 1-8 unique symbols in
+`TICKER:TSX` format.
+
+## What Scout scores
+
+Scout V1 prefers research setups consistent with RUNLU's current style:
+
+- pullbacks near recent support;
+- RSI that is weak/neutral rather than extended;
+- price above the long-term trend when possible;
+- constructive short-term trend structure;
+- MACD improvement;
+- meaningful room before recent resistance;
+- normal rather than extreme volume.
+
+It also raises explicit risk flags for:
+
+- breaks below recent support;
+- very weak RSI / falling-knife risk;
+- price below SMA200;
+- short-term trend deterioration;
+- sharp recent drops;
+- chase risk after large rises;
+- unusual volume spikes.
+
+These are **research heuristics**, not investment recommendations.
+
+## Mandatory joint research gate
+
+Every new candidate is born as:
+
+`RESEARCH_REQUIRED`
+
+No automatic promotion is allowed.
+
+To record a final outcome, the research record must include:
+
+- research complete;
+- assistant research complete;
+- explicit user confirmation;
+- bull thesis;
+- bear case;
+- key risks;
+- invalidation condition;
+- final decision: PASS, WATCH, or APPROVED.
+
+Even `APPROVED_UNIVERSE` means only that the stock may be watched more closely.
+Scout V1 keeps:
+
+`tradeEligible = false`
+
+for every non-CSU candidate.
+
+## Private registry
+
+`bridge/scout_registry.py` stores Scout state under:
+
+`.csu-private/scout-registry.json`
+
+This directory is gitignored.
+
+A later scan can update score, reasons, risk flags, and market timestamp, but it
+does not erase an existing human research verdict.
+
+`bridge/scout_review_cli.py` can import a scan JSON, list ranked candidates,
+and record a completed joint-review decision locally.
+
+## Current limitation
+
+Scout V1 scans a **curated universe**, not the entire TSX automatically. This is
+intentional: it lets us validate ranking quality and API cost before adding a
+broader market-discovery feed.
+
+CSU continues to use the dedicated strategy, realtime-lite loop, risk engine,
+proposal path, and localhost approval flow.
+
+
+## Scout Hunter V1 — automatic candidate-pool generator
+
+Scout no longer has to wait for us to type every symbol manually.
+
+The protected endpoint `GET /api/scout/universe` requests Twelve Data's TSX
+stock catalog and keeps only ordinary Canadian TSX common-stock metadata. It
+returns a **research universe only**; catalog membership never grants realtime
+or trading permission.
+
+`bridge/scout_hunter.py` then:
+
+1. caches the sanitized TSX research catalog locally for 12 hours;
+2. removes CSU from the hunting rotation because CSU remains the primary bot;
+3. remembers a private cursor in `.csu-private/scout-hunter-state.json`;
+4. selects at most 8 new symbols per cycle;
+5. asks `/api/scout/scan` to score that batch;
+6. merges results into the private Scout registry;
+7. advances the cursor so later cycles explore different stocks;
+8. reports only the current top research candidates.
+
+This creates a slow, cost-aware market search instead of hammering every TSX
+symbol at once.
+
+A full rotation does **not** imply approval. Every discovered stock still enters
+`RESEARCH_REQUIRED` and must pass the user + assistant joint-research gate.
+
+## Authority boundary after Hunter
+
+```text
+TSX catalog
+   |
+Scout Hunter rotation
+   |
+Scout technical ranking
+   |
+RESEARCH_REQUIRED
+   |
+user + assistant research
+   |
+PASS / WATCH / APPROVED_UNIVERSE
+   |
+tradeEligible = false
+```
+
+CSU remains the only symbol connected to the existing dedicated proposal and
+execution-readiness architecture.
+
+
+## Daily Research + Watchman
+
+`bridge/scout_daily.py` turns Hunter output into a bounded after-close research
+routine.
+
+Default behavior:
+
+- weekday only;
+- no earlier than 16:20 America/Toronto;
+- 3 Hunter batches per day by default;
+- hard limit of 1-6 batches;
+- one completed run per Toronto calendar date;
+- writes `.csu-private/scout-daily-top5.json`;
+- reports the current Top 5 non-PASS research candidates;
+- keeps `tradeEligible = false` and broker submission disabled.
+
+Each Top-5 row now also receives a private **RUNLU Research Card** from
+`bridge/scout_research_card.py`. The card starts incomplete and requires
+business model, financial quality, valuation, industry/competition, management,
+recent news/catalysts, bull case, bear case, key risks, a "what could make us
+wrong" section, an invalidation condition, and at least two sources before it can
+be considered research-complete.
+
+Research completeness still does not authorize trading.
+
+`bridge/scout_watchman.py` is the local scheduler process. It may stay running
+on the Mac and wakes every 15-60 minutes (30 minutes by default). The internal
+daily guard means wake-ups outside the research window do nothing, and a
+completed date is not scanned twice.
+
+The intended flow is now:
+
+```text
+CSU dedicated realtime bot  <---- remains primary
+          |
+          +------------------------------+
+                                         |
+TSX catalog -> Hunter rotation -> Daily Top 5
+                              -> Research Cards
+                              -> user + assistant due diligence
+                              -> PASS / WATCH / APPROVED_UNIVERSE
+                              -> tradeEligible = false
+```
+
+There is still no background brokerage executor, no Scout auto-buy path, and no
+automatic promotion from research ranking into the CSU execution architecture.
+
+
+## Joint-research evidence gate
+
+`bridge/scout_research_agenda.py` now turns every Research Card into a
+structured due-diligence agenda. The agenda explicitly asks about business
+model, financial quality, balance sheet, valuation, industry/competition,
+management, recent catalysts, bull case, bear case, what could make us wrong,
+and an invalidation condition.
+
+Research completion now requires a structured evidence bundle with:
+
+- at least 3 valid sources;
+- at least 1 primary company/regulatory source;
+- at least 1 independent source;
+- unique source URLs;
+- research notes for every source;
+- ISO-dated evidence when a publication date is supplied.
+
+Primary source types include regulatory filings, company investor-relations
+material, and earnings releases. Independent source types include news,
+analyst research, and industry sources.
+
+Passing the evidence gate still keeps:
+
+`tradeEligible = false`
+
+and
+
+`brokerSubmissionEnabled = false`.
+
+## Local Scout Research Queue
+
+The localhost approval panel now has a separate **Scout Research Queue** below
+the CSU approval cards.
+
+It reads only the private daily Top-5 report and exposes a sanitized,
+research-only view containing symbol, Scout score/tier, reasons, risk flags,
+research questions, and source-policy requirements. Account identifiers,
+balances, snapshots, and brokerage credentials are not surfaced.
+
+Each candidate has a **COPY RESEARCH PACKET / 复制调研包** control that copies a
+sanitized `RUNLU_SCOUT_RESEARCH_PACKET`. That packet can be brought into the
+user + assistant research conversation without carrying brokerage data or
+granting any trading authority.
+
+The panel does not provide an APPROVE button for Scout research candidates.
+Research results must still go through the explicit joint-review workflow.
+
+
+## Research result writeback + investment record
+
+Scout research now has a deliberate two-step writeback boundary.
+
+### Step 1 — assistant research writeback
+
+A completed research dossier uses:
+
+`RUNLU_SCOUT_RESEARCH_RESULT`
+
+The packet must:
+
+- match the exact Scout symbol;
+- contain every required Research Card section;
+- pass the structured evidence gate;
+- declare `assistantResearchComplete = true`;
+- keep `userConfirmed = false`;
+- contain no final investment decision.
+
+`bridge/scout_research_writeback.py` validates the packet, computes a SHA-256
+digest over the sanitized research body, and archives it in:
+
+`.csu-private/scout-research-archive.json`
+
+Each distinct research result receives an archive version. Identical digests
+cannot be archived twice.
+
+The candidate then moves only to:
+
+`ASSISTANT_COMPLETE_AWAITING_USER`
+
+It remains:
+
+`stage = RESEARCH_REQUIRED`
+
+`realtimeEligible = false`
+
+`tradeEligible = false`
+
+### Step 2 — explicit user final decision
+
+The final PASS / WATCH / APPROVED decision is a separate action. The registry
+now refuses finalization unless completed assistant research has already been
+written back.
+
+A final decision may be bound to the archived research SHA-256 digest. A wrong
+digest is rejected.
+
+`bridge/scout_review_cli.py decision-template SYMBOL` generates a local
+decision template containing the current research digest with
+`user_confirmed = false`. The user must explicitly change the decision and
+confirmation before the joint-review action can succeed.
+
+Final decisions are appended to a bounded `decisionHistory` and survive later
+Scout rescans.
+
+Even a user-confirmed `APPROVED` result produces
+`APPROVED_UNIVERSE`, not trading authority. Scout V1 still returns an empty
+execution-eligible symbol list.
+
+## Local panel research writeback
+
+The localhost panel now supports:
+
+`POST /api/scout/research-writeback`
+
+and a corresponding **IMPORT RESEARCH RESULT / 导入调研结果** box on each Scout
+candidate.
+
+The operator can paste a completed `RUNLU_SCOUT_RESEARCH_RESULT` generated
+from the joint research conversation. The endpoint is protected by the same
+loopback session boundary as the rest of the panel and runs the full evidence
+and authority validation before writing anything.
+
+After successful writeback, the panel merges the current private registry state
+into the daily Top-5 display and shows:
+
+- `PENDING`;
+- `ASSISTANT_COMPLETE_AWAITING_USER`; or
+- `FINALIZED`.
+
+Research writeback never records user confirmation and never creates a broker
+order.
+
+
+## Explicit final verdict in the localhost panel
+
+Once a Scout candidate reaches
+`ASSISTANT_COMPLETE_AWAITING_USER`, the local Research Queue reveals three
+research-verdict controls:
+
+- **PASS / 放弃**
+- **WATCH / 观察**
+- **APPROVED UNIVERSE / 通过研究**
+
+These are research classifications, not order approvals.
+
+The panel sends the selected verdict together with the exact archived research
+SHA-256 digest to:
+
+`POST /api/scout/finalize-research`
+
+Finalization requires:
+
+- a non-CSU TSX Scout candidate;
+- completed archived assistant research;
+- `user_confirmed = true`;
+- PASS, WATCH, or APPROVED;
+- the exact 64-character archived research digest.
+
+A missing or mismatched digest fails closed.
+
+The result remains:
+
+`trade_eligible = false`
+
+`broker_submission_enabled = false`
+
+WATCH and APPROVED_UNIVERSE may be marked eligible for future non-executing
+realtime observation, but neither is connected to broker execution in Scout V1.
+
+
+## Material-change research rechecks
+
+A WATCH or APPROVED_UNIVERSE decision is no longer treated as permanently
+valid.
+
+`bridge/scout_recheck.py` can reopen joint due diligence when a material
+change is detected. Current conservative triggers are:
+
+- absolute Scout score change of at least 15 points;
+- absolute price move of at least 12% from the supplied prior reference price;
+- material events such as earnings, guidance, M&A, management change,
+  regulatory action, capital raise, dividend change, credit event, litigation,
+  or other material news;
+- finalized research age of at least 120 days.
+
+When triggered, the registry moves the candidate to:
+
+`stage = RECHECK_REQUIRED`
+
+`researchStatus = RECHECK_REQUIRED`
+
+and immediately disables realtime eligibility and trading eligibility.
+
+The recheck packet preserves the prior stage, prior research digest, trigger
+reasons, score context, and optional price context. It is always
+`JOINT_RESEARCH_RECHECK` and research-only.
+
+Daily rescans can automatically detect material Scout-score changes. Other
+event/price triggers can be fed into `flag_material_recheck()` by a future
+news/quote monitor. No event monitor or brokerage action is implied by this
+module.
+
+The localhost Research Queue surfaces a prominent
+**RECHECK REQUIRED / 需要重新调研** alert with the trigger reasons. A fresh
+research result must then pass the same evidence/writeback/user-confirmation
+workflow as a new candidate.
+
+
+## Scout Watch Monitor
+
+`bridge/scout_watch.py` adds the non-executing monitoring layer for finalized
+Scout research.
+
+Only candidates in `WATCH` or `APPROVED_UNIVERSE` with
+`researchStatus = FINALIZED` are eligible for monitoring. New discoveries,
+pending research, PASS candidates, and candidates already in
+`RECHECK_REQUIRED` are excluded.
+
+The monitor accepts normalized observations containing an optional price and
+zero or more material-event records. It keeps only a private local reference
+price/timestamp and feeds changes into the material-change recheck engine.
+
+The first observed price establishes a baseline. A later move crossing the
+configured material-change threshold, or a recognized material event, moves
+the candidate to `RECHECK_REQUIRED` and disables realtime eligibility.
+
+Polling is bounded to 60–300 seconds, with 300 seconds as the default. This is
+appropriate for the project's 1–5 minute research-monitoring cadence and avoids
+pretending to be a professional tick-level trading feed.
+
+The module intentionally has no brokerage snapshot dependency and no order
+payload or broker submission route. Its `run_forever(observer)` entry point
+accepts a future quote/news observer; provider-specific ingestion is not yet
+implemented and must not be represented as active monitoring until that
+observer is connected.
+
+
+## Live quote feed for Scout Watch
+
+Scout Watch now has a bounded quote-data path that reuses the existing Twelve
+Data credential on the local Worker rather than placing the market-data API key
+in the Mac-side watcher.
+
+Protected endpoint:
+
+`POST /api/scout/watch-quotes`
+
+The endpoint accepts only 1-5 non-CSU `TICKER:TSX` symbols. CSU is rejected
+because it remains under the dedicated CSU Realtime Lite workflow. The interval
+is limited to `1min` or `5min`, with `5min` as the fail-safe default.
+
+The endpoint returns only:
+
+- symbol;
+- latest observed price;
+- market-data timestamp;
+- per-symbol data errors.
+
+It accepts no brokerage snapshot and cannot create an order, proposal, or trade
+permission.
+
+`bridge/scout_watch_provider.py` is the local quote adapter. It calls only the
+protected loopback endpoint, rotates through at most five WATCH /
+APPROVED_UNIVERSE symbols per cycle, and keeps its cursor in the private
+`.csu-private` directory.
+
+The default operating posture is deliberately cost-aware:
+
+- 5-minute quote interval;
+- watcher polling bounded to 60-300 seconds;
+- default polling every 300 seconds;
+- weekday monitoring window 09:30-16:10 America/Toronto;
+- at most five Scout symbols queried per cycle.
+
+This does not assert that a particular Twelve Data subscription includes every
+TSX intraday entitlement. Provider-plan availability must be verified at
+runtime.
+
+### Bearer-token transport hardening
+
+Private local bearer tokens are now guarded by
+`bridge/local_url.py`. Scout Hunter, Scout Watch quote ingestion, CSU
+Realtime Lite, and the SnapTrade-to-bot handoff reject non-loopback destinations
+before reading or attaching the private bearer token.
+
+Allowed destinations are explicit `http` loopback hosts
+(`127.0.0.1`, `localhost`, or `::1`) with an explicit port.
+
+This prevents an accidentally or maliciously changed environment URL from
+forwarding `CSU_SNAPSHOT_TOKEN` to an external host.
+
+
+## Official Press-Release Event Radar
+
+Scout Watch now has a second, slower monitoring lane for material company
+events.
+
+Protected Worker endpoint:
+
+`POST /api/scout/watch-events`
+
+The endpoint accepts only 1-3 non-CSU `TICKER:TSX` symbols per request and
+uses the existing Worker-side Twelve Data credential to query official company
+press releases. The response is reduced to sanitized event metadata:
+
+- press-release ID;
+- normalized material-event category;
+- title;
+- release timestamp;
+- `sourceType = OFFICIAL_PRESS_RELEASE`.
+
+The event classifier currently recognizes:
+
+- EARNINGS;
+- GUIDANCE;
+- M_AND_A;
+- MANAGEMENT_CHANGE;
+- REGULATORY;
+- CAPITAL_RAISE;
+- DIVIDEND_CHANGE;
+- CREDIT_EVENT;
+- LITIGATION;
+- MATERIAL_NEWS fallback.
+
+The Worker does not pass full press-release bodies to the local watcher and the
+endpoint accepts no brokerage snapshot.
+
+### Local Event Radar provider
+
+`bridge/scout_event_provider.py` polls the protected loopback endpoint on a
+separate cost-aware cadence.
+
+Defaults:
+
+- 30-minute polling;
+- hard bounds of 15-60 minutes;
+- at most three Scout symbols per cycle;
+- rotating cursor when the watch universe is larger;
+- weekday event window 07:00-18:30 America/Toronto, covering common premarket
+  and after-hours announcement periods;
+- CSU remains excluded.
+
+The first successful fetch for each symbol establishes a baseline. Existing
+press releases are recorded as already seen and do not trigger a false
+`RECHECK_REQUIRED` event. Only newly observed press-release IDs are forwarded
+into the Scout recheck engine.
+
+Seen IDs and cursor state live only in the private `.csu-private` directory.
+
+### Recheck event context
+
+Material-event recheck packets now preserve sanitized event context in addition
+to the event category. The localhost Scout Research Queue can therefore show
+the official release title and timestamp that caused the research verdict to be
+reopened.
+
+Any event-driven recheck still immediately sets:
+
+`stage = RECHECK_REQUIRED`
+
+`researchStatus = RECHECK_REQUIRED`
+
+`realtimeEligible = false`
+
+`tradeEligible = false`
+
+The radar only reopens due diligence. It cannot approve, construct, or submit a
+broker order.
+
+
+## Independent News Review Radar
+
+Scout now has a third monitoring lane for independent news context.
+
+`bridge/scout_independent_news.py` uses a best-effort Google News RSS search
+for finalized non-CSU WATCH / APPROVED_UNIVERSE symbols. This lane deliberately
+does not share the private bearer token and does not use brokerage data.
+
+The independent-news lane is less trusted than the official press-release lane.
+Ticker-only web-news matching can be noisy, sources can summarize facts
+incorrectly, and headlines can overstate or omit important context.
+
+For that reason a new independent-news item does **not** automatically move a
+candidate to `RECHECK_REQUIRED`.
+
+Instead it is stored privately as:
+
+`NEWS_REVIEW_REQUIRED`
+
+with:
+
+`automaticRecheck = false`
+
+`userConfirmedMaterial = false`
+
+`tradeEligible = false`
+
+The first successful RSS fetch establishes a per-symbol baseline so old stories
+do not appear as new alerts. Later cycles emit only previously unseen story
+IDs. State and alerts are stored in the private `.csu-private` directory.
+
+The local watchman defaults to a 30-minute cycle, is bounded to 15-60 minutes,
+rotates at most three symbols per cycle, and runs only during the weekday
+07:00-18:30 America/Toronto review window.
+
+### Independent News Review in localhost panel
+
+The approval panel now has a separate:
+
+**Independent News Review / 独立新闻复核**
+
+section.
+
+Each alert exposes only sanitized research context:
+
+- symbol;
+- coarse material category;
+- headline;
+- publisher;
+- publication time;
+- public story link.
+
+The operator can copy a
+`RUNLU_SCOUT_NEWS_REVIEW` packet into the user + assistant research
+conversation.
+
+There is also an explicit:
+
+**ESCALATE TO RECHECK / 确认重大并复查**
+
+control.
+
+This action requires a user confirmation dialog and a matching private alert
+record. Only after the user confirms that the independent story is materially
+relevant does the system feed a sanitized event into the existing recheck
+engine.
+
+Escalation results only in research being reopened. It still enforces:
+
+`tradeEligible = false`
+
+`brokerSubmissionEnabled = false`
+
+and never authorizes or constructs a broker order.
