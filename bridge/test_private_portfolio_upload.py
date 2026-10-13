@@ -8,6 +8,7 @@ from unittest.mock import patch
 import private_portfolio_upload as upload
 from private_portfolio_upload import (
     PrivatePortfolioUploadError,
+    _load_private_env,
     _validate_destination,
     build_mobile_snapshot,
     upload_snapshot,
@@ -29,6 +30,26 @@ class FakeResponse:
 
 
 class PrivatePortfolioUploadTests(unittest.TestCase):
+    def test_private_env_loader_only_accepts_expected_keys_and_does_not_override(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "private.env"
+            path.write_text(
+                "RUNLU_PRIVATE_PORTFOLIO_URL=https://private.example.com/api/private/snapshot\n"
+                "RUNLU_PRIVATE_PORTFOLIO_ALLOWED_HOST=private.example.com\n"
+                "PRIVATE_SNAPSHOT_UPLOAD_TOKEN=synthetic-token\n"
+                "CSU_SNAPSHOT_TOKEN=must-not-load\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"RUNLU_PRIVATE_PORTFOLIO_ALLOWED_HOST": "already-set"}, clear=True):
+                _load_private_env(path)
+                self.assertEqual(
+                    os.environ["RUNLU_PRIVATE_PORTFOLIO_URL"],
+                    "https://private.example.com/api/private/snapshot",
+                )
+                self.assertEqual(os.environ["RUNLU_PRIVATE_PORTFOLIO_ALLOWED_HOST"], "already-set")
+                self.assertEqual(os.environ["PRIVATE_SNAPSHOT_UPLOAD_TOKEN"], "synthetic-token")
+                self.assertNotIn("CSU_SNAPSHOT_TOKEN", os.environ)
+
     def test_mobile_snapshot_drops_account_and_transaction_fields(self):
         safe = build_mobile_snapshot({
             "accountId": "DO-NOT-SEND",
