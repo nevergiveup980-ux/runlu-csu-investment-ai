@@ -197,3 +197,26 @@ It exposes no username, password verifier, token, account ID, balances, or
 position data.
 
 The private phone login page also displays this readiness state before login.
+
+
+## Optional macOS auto-start
+
+After bootstrap succeeds, install the private phone sync as a per-user macOS
+LaunchAgent:
+
+`python3 scripts/install-private-portfolio-sync.py`
+
+The LaunchAgent runs the sync watcher at login and keeps it alive. It stores no
+upload token in the plist; the watcher reads the chmod-0600
+`.csu-private/private-portfolio.env` file directly.
+
+Logs remain local in:
+
+- `.csu-private/private-portfolio-sync.log`
+- `.csu-private/private-portfolio-sync.err.log`
+
+Remove the LaunchAgent with:
+
+`python3 scripts/install-private-portfolio-sync.py --uninstall`
+
+Installing or removing the watcher does not enable brokerage submission.
