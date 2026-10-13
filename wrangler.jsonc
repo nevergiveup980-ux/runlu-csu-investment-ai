@@ -26,7 +26,12 @@
       "vars": {
         "CSU_SYMBOL": "CSU",
         "CSU_EXCHANGE": "TSX"
-      }
+      },
+      "kv_namespaces": [
+        {
+          "binding": "PRIVATE_PORTFOLIO"
+        }
+      ]
     }
   }
 }
