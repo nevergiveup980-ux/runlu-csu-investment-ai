@@ -3,7 +3,9 @@
   "name": "runlu-csu-investment-ai-v1",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-12",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
@@ -14,6 +16,17 @@
   },
   "observability": {
     "enabled": true,
-    "logs": { "head_sampling_rate": 1 }
+    "logs": {
+      "head_sampling_rate": 1
+    }
+  },
+  "env": {
+    "private": {
+      "name": "runlu-csu-investment-ai-private",
+      "vars": {
+        "CSU_SYMBOL": "CSU",
+        "CSU_EXCHANGE": "TSX"
+      }
+    }
   }
 }
