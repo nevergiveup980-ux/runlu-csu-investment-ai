@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>RUNLU CSU Bot · Mobile Monitor</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#f4f7f5;background:#0d1117}
+*{box-sizing:border-box}body{margin:0;background:#0d1117}.wrap{max-width:760px;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}
+.brand{font-size:12px;letter-spacing:.16em;color:#9aa5a0}.title{font-size:30px;font-weight:760;margin:7px 0 4px}.sub{color:#9aa5a0;font-size:14px;line-height:1.5}
+.hero{margin:18px 0;background:#141a20;border:1px solid #27313a;border-radius:22px;padding:18px}
+.statusline{display:flex;align-items:center;gap:9px}.dot{width:11px;height:11px;border-radius:50%;background:#8d949a;box-shadow:0 0 0 4px rgba(141,148,154,.1)}
+.dot.ok{background:#45c486;box-shadow:0 0 0 4px rgba(69,196,134,.12)}.dot.warn{background:#e5af45;box-shadow:0 0 0 4px rgba(229,175,69,.12)}.dot.bad{background:#e05e5e;box-shadow:0 0 0 4px rgba(224,94,94,.12)}
+.big{font-size:25px;font-weight:720;margin-top:7px}.small{font-size:13px;color:#9aa5a0;line-height:1.5}.grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:11px 0}
+.card{background:#141a20;border:1px solid #27313a;border-radius:18px;padding:14px;min-height:112px}.label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#87918c}.value{font-size:19px;font-weight:680;margin-top:7px;word-break:break-word}
+.section{font-size:18px;font-weight:700;margin:24px 2px 10px}.module{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:13px 0;border-top:1px solid #242c33}.module:first-child{border-top:0}.moduleName{font-weight:650}.badge{font-size:11px;border-radius:999px;padding:6px 9px;border:1px solid #34424d;white-space:nowrap}.badge.ok{color:#65d89b;border-color:#285940}.badge.warn{color:#efbd5b;border-color:#6c5428}.badge.lock{color:#aeb7b2}
+.notice{background:#171d22;border:1px solid #313b43;border-radius:16px;padding:13px 14px;color:#b4bcb8;font-size:13px;line-height:1.55;margin-top:12px}
+.actions{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}button,a.btn{appearance:none;border:1px solid #3a4650;background:#171d22;color:#f4f7f5;border-radius:999px;padding:10px 14px;font:inherit;text-decoration:none}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#9aa5a0}.foot{font-size:12px;color:#75807a;margin-top:24px;line-height:1.55}
+@media(max-width:430px){.title{font-size:27px}.grid{grid-template-columns:1fr 1fr}.card{min-height:108px}.value{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">RUNLU · READ-ONLY MOBILE MONITOR</div>
+  <div class="title">CSU Bot V2 Status</div>
+  <div class="sub">Phone view · cloud-safe status only · no approval or broker controls</div>
+
+  <div class="hero">
+    <div class="statusline"><span class="dot" id="overallDot"></span><span class="label">Overall observable status</span></div>
+    <div class="big" id="overall">CHECKING…</div>
+    <div class="small" id="overallNote">Reading public market refresh and experimental-branch checks.</div>
+    <div class="actions">
+      <button id="refresh">REFRESH / 刷新</button>
+      <a class="btn" href="./">CSU DASHBOARD / 主面板</a>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="label">CSU Price</div><div class="value" id="price">—</div><div class="small" id="quoteAsOf">Waiting</div></div>
+    <div class="card"><div class="label">Market Data</div><div class="value" id="dataState">CHECKING</div><div class="small" id="refreshAge">—</div></div>
+    <div class="card"><div class="label">If Not Holding</div><div class="value" id="buyDecision">—</div><div class="small">Public research signal</div></div>
+    <div class="card"><div class="label">If Holding</div><div class="value" id="sellDecision">—</div><div class="small">Public research signal</div></div>
+  </div>
+
+  <div class="section">V2 Experimental Build</div>
+  <div class="hero">
+    <div class="module"><div><div class="moduleName">GitHub Safety Checks</div><div class="small" id="ciDetail">Checking latest branch runs…</div></div><span class="badge" id="ciBadge">CHECKING</span></div>
+    <div class="module"><div><div class="moduleName">Draft PR #4</div><div class="small">Experimental branch is still isolated from main.</div></div><span class="badge warn">DRAFT</span></div>
+    <div class="module"><div><div class="moduleName">Live Trading</div><div class="small">No broker submission route is enabled.</div></div><span class="badge lock">OFF</span></div>
+  </div>
+
+  <div class="section">Research Robot Modules</div>
+  <div class="hero">
+    <div class="module"><div><div class="moduleName">CSU Realtime Lite</div><div class="small">1–5 min research path · local runtime only</div></div><span class="badge ok">CODE READY</span></div>
+    <div class="module"><div><div class="moduleName">Scout Hunter</div><div class="small">TSX candidate discovery · research only</div></div><span class="badge ok">CODE READY</span></div>
+    <div class="module"><div><div class="moduleName">Scout Watch Quotes</div><div class="small">WATCH / APPROVED universe price observations</div></div><span class="badge ok">CODE READY</span></div>
+    <div class="module"><div><div class="moduleName">Official Event Radar</div><div class="small">Company press-release material-event checks</div></div><span class="badge ok">CODE READY</span></div>
+    <div class="module"><div><div class="moduleName">Independent News Review</div><div class="small">Headline alerts require explicit review before recheck</div></div><span class="badge ok">CODE READY</span></div>
+    <div class="module"><div><div class="moduleName">Mac Local Watchers</div><div class="small">Private localhost processes are intentionally not exposed to this public phone page.</div></div><span class="badge lock">PRIVATE</span></div>
+  </div>
+
+  <div class="notice"><b>Important:</b> “CODE READY” means the experimental module passed repository checks; it does not mean the private watcher is currently running on the Mac. This public page cannot see localhost processes, account data, approvals, or private Scout files.</div>
+
+  <div class="section">Last Observable Activity</div>
+  <div class="hero">
+    <div class="module"><div><div class="moduleName">Public research refresh</div><div class="small" id="publicRefresh">—</div></div><span class="badge" id="publicBadge">—</span></div>
+    <div class="module"><div><div class="moduleName">Experimental branch check</div><div class="small" id="branchActivity">—</div></div><span class="badge" id="branchBadge">—</span></div>
+  </div>
+
+  <div class="foot">RUNLU Mobile Monitor is read-only. No account identifiers, balances, private research archive, approval tokens, or brokerage actions are published here.</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>n==null?'—':Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
+const when=v=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString()};
+const ageMin=v=>{const d=new Date(v);if(Number.isNaN(d.getTime()))return null;return Math.max(0,(Date.now()-d.getTime())/60000)};
+function setBadge(el,state,text){el.className='badge '+(state||'');el.textContent=text}
+async function market(){
+  try{
+    const r=await fetch('./data.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('data unavailable');
+    const d=await r.json(),i=d.indicators||{},a=d.analysis||{},ds=d.dataStatus||{};
+    $('price').textContent=i.price==null?'—':'C$'+fmt(i.price);
+    $('quoteAsOf').textContent='Quote '+when(ds.priceAsOf||d.asOf);
+    $('buyDecision').textContent=a.buyDecision||'—';$('sellDecision').textContent=a.sellDecision||'—';
+    const mins=ageMin(d.updatedAt),limit=Number(ds.staleAfterMinutes||190),fresh=mins!=null&&mins<=limit;
+    $('dataState').textContent=fresh?'ACTIVE ✓':'STALE ⚠️';
+    $('refreshAge').textContent=mins==null?'Refresh time unavailable':Math.round(mins)+' min since robot refresh';
+    $('publicRefresh').textContent=when(d.updatedAt);
+    setBadge($('publicBadge'),fresh?'ok':'warn',fresh?'FRESH':'STALE');
+    return {fresh,updatedAt:d.updatedAt};
+  }catch(e){
+    $('dataState').textContent='UNAVAILABLE';$('refreshAge').textContent=String(e.message||e);
+    setBadge($('publicBadge'),'warn','UNKNOWN');return {fresh:false,error:true};
+  }
+}
+async function checks(){
+  try{
+    const url='https://api.github.com/repos/nevergiveup980-ux/runlu-csu-investment-ai/actions/runs?branch=csu-bot-v2-experimental&per_page=8';
+    const r=await fetch(url,{headers:{Accept:'application/vnd.github+json'},cache:'no-store'});if(!r.ok)throw new Error('GitHub status unavailable');
+    const d=await r.json(),runs=Array.isArray(d.workflow_runs)?d.workflow_runs:[],latest=runs[0],same=latest?runs.filter(x=>x.head_sha===latest.head_sha):[];
+    const done=same.length>0&&same.every(x=>x.status==='completed'),ok=done&&same.every(x=>x.conclusion==='success'),working=same.some(x=>x.status!=='completed');
+    const sha=latest?.head_sha?latest.head_sha.slice(0,8):'—';
+    if(ok){setBadge($('ciBadge'),'ok','SUCCESS');setBadge($('branchBadge'),'ok','GREEN')}else if(working){setBadge($('ciBadge'),'warn','RUNNING');setBadge($('branchBadge'),'warn','CHECKING')}else{setBadge($('ciBadge'),'warn','ATTENTION');setBadge($('branchBadge'),'warn','CHECK')}
+    $('ciDetail').textContent=(ok?'Latest checks passed':'Latest checks need attention')+' · '+sha;
+    $('branchActivity').textContent=latest?('Commit '+sha+' · '+when(latest.updated_at||latest.created_at)):'No run found';
+    return {ok,working,sha};
+  }catch(e){
+    $('ciDetail').textContent=String(e.message||e);setBadge($('ciBadge'),'warn','UNKNOWN');setBadge($('branchBadge'),'warn','UNKNOWN');
+    $('branchActivity').textContent='Could not read public GitHub check status';return {ok:false,error:true};
+  }
+}
+async function load(){
+  $('overall').textContent='CHECKING…';$('overallDot').className='dot';
+  const [m,c]=await Promise.all([market(),checks()]);
+  if(m.fresh&&c.ok){$('overall').textContent='PUBLIC ROBOT HEALTHY ✓';$('overallDot').className='dot ok';$('overallNote').textContent='Market refresh is current and the latest V2 branch checks are green.'}
+  else if(c.working){$('overall').textContent='CHECKS IN PROGRESS';$('overallDot').className='dot warn';$('overallNote').textContent='Public market status loaded; V2 branch checks are still running.'}
+  else{$('overall').textContent='REVIEW STATUS';$('overallDot').className='dot warn';$('overallNote').textContent='One or more public signals are stale, unavailable, or need attention.'}
+}
+$('refresh').onclick=load;
+load();
+setInterval(load,120000);
+</script>
+</body>
+</html>
