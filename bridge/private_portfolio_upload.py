@@ -17,6 +17,29 @@ from typing import Any, Dict
 from urllib.parse import urlparse
 
 SNAPSHOT_CACHE = Path(".csu-private") / "latest-snapshot.json"
+PRIVATE_ENV_FILE = Path(".csu-private") / "private-portfolio.env"
+
+
+def _load_private_env(path: Path = PRIVATE_ENV_FILE) -> None:
+    try:
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return
+    for line in lines:
+        value = line.strip()
+        if not value or value.startswith("#") or "=" not in value:
+            continue
+        key, raw = value.split("=", 1)
+        key = key.strip()
+        if key in {
+            "RUNLU_PRIVATE_PORTFOLIO_URL",
+            "RUNLU_PRIVATE_PORTFOLIO_ALLOWED_HOST",
+            "PRIVATE_SNAPSHOT_UPLOAD_TOKEN",
+        } and key not in os.environ:
+            os.environ[key] = raw.strip()
+
+
+_load_private_env()
 PRIVATE_URL = os.getenv("RUNLU_PRIVATE_PORTFOLIO_URL", "").strip()
 ALLOWED_HOST = os.getenv("RUNLU_PRIVATE_PORTFOLIO_ALLOWED_HOST", "").strip()
 
