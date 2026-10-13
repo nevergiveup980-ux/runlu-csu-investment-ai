@@ -191,6 +191,7 @@ def main():
     print(f"{worker_url}/api/private/status")
     print(f"Mac uploader config saved privately to: {LOCAL_ENV.relative_to(ROOT)}")
     print("Next: run the local read-only bridge, then upload a fresh minimized snapshot.")
+    print("Optional auto-start: python3 scripts/install-private-portfolio-sync.py")
 
 
 if __name__ == "__main__":
