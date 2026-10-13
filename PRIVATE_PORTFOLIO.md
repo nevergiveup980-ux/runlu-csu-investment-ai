@@ -132,3 +132,68 @@ live portfolio.
 
 The public GitHub Pages monitor remains separate and contains no private
 portfolio data.
+
+
+## One-command bootstrap
+
+The repository now includes:
+
+`python3 scripts/bootstrap-private-portfolio.py`
+
+Run it from the repository root on the Mac while the
+`csu-bot-v2-experimental` branch is checked out.
+
+The bootstrap refuses to run from another branch. It verifies Wrangler login,
+creates or reuses the isolated `private` Worker environment, creates the
+`PRIVATE_PORTFOLIO` KV namespace, writes the KV binding into the local
+Wrangler config, prompts for the private username/password, generates the
+PBKDF2 salt/verifier plus session/upload secrets, bulk-uploads those secrets,
+deploys the separate `runlu-csu-investment-ai-private` Worker, and writes the
+Mac uploader settings to:
+
+`.csu-private/private-portfolio.env`
+
+That local file is chmod 0600 and is already covered by `.gitignore`.
+
+The script does not print the password, password verifier, session secret, or
+upload token.
+
+If Wrangler is not already authenticated, run:
+
+`npx wrangler login`
+
+once, complete Cloudflare's browser authorization, and run the bootstrap again.
+
+## Automatic phone snapshot sync
+
+Every ordinary read-only bridge refresh now updates:
+
+`.csu-private/latest-snapshot.json`
+
+The separate watcher:
+
+`python3 bridge/private_portfolio_sync.py`
+
+checks that cache every three minutes by default. It only uploads when the
+snapshot content changed, rejects snapshots more than 30 minutes old, rejects a
+timestamp more than five minutes in the future, and records only its private
+sync state in `.csu-private`.
+
+Polling is bounded to 60–300 seconds through
+`RUNLU_PRIVATE_PORTFOLIO_POLL_SECONDS`.
+
+A failed phone upload does not alter or interrupt the local CSU bot's
+read-only decision path.
+
+## Deployment readiness check
+
+After the private Worker deploys, this public-safe endpoint reports whether the
+authentication secrets, KV binding, upload secret, and a portfolio snapshot are
+present:
+
+`GET /api/private/status`
+
+It exposes no username, password verifier, token, account ID, balances, or
+position data.
+
+The private phone login page also displays this readiness state before login.
