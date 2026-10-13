@@ -82,7 +82,8 @@ def save_config(config):
     CONFIG.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
 
 
-def ensure_private_env(config):
+def ensure_private_env():
+    config = load_config()
     envs = config.setdefault("env", {})
     private = envs.setdefault(ENV_NAME, {})
     private["name"] = WORKER_NAME
@@ -90,47 +91,17 @@ def ensure_private_env(config):
         "CSU_SYMBOL": "CSU",
         "CSU_EXCHANGE": "TSX",
     }
-    return private
-
-
-def extract_namespace_id(output):
-    patterns = [
-        r'id\s*[:=]\s*["\']?([0-9a-fA-F]{32})',
-        r'"id"\s*:\s*"([0-9a-fA-F]{32})"',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, output, flags=re.IGNORECASE)
-        if match:
-            return match.group(1)
-    candidates = re.findall(r"\b[0-9a-fA-F]{32}\b", output)
-    if len(candidates) == 1:
-        return candidates[0]
-    raise SystemExit(
-        "KV namespace was created, but its ID could not be parsed safely.\n"
-        "Copy the Wrangler output and add the PRIVATE_PORTFOLIO binding manually."
-    )
-
-
-def ensure_kv_binding():
-    config = load_config()
-    private = ensure_private_env(config)
-    existing = private.get("kv_namespaces") or []
-    for item in existing:
-        if item.get("binding") == KV_BINDING and item.get("id"):
-            save_config(config)
-            return item["id"], False
-
+    bindings = private.setdefault("kv_namespaces", [])
+    if not any(item.get("binding") == KV_BINDING for item in bindings if isinstance(item, dict)):
+        bindings.append({"binding": KV_BINDING})
     save_config(config)
-    result = run([
-        "npx", "wrangler", "kv", "namespace", "create", KV_BINDING,
-        "--env", ENV_NAME,
-    ])
-    kv_id = extract_namespace_id(result.stdout)
-    config = load_config()
-    private = ensure_private_env(config)
-    private["kv_namespaces"] = [{"binding": KV_BINDING, "id": kv_id}]
-    save_config(config)
-    return kv_id, True
+
+
+def provision_private_worker():
+    """Deploy once so Wrangler can auto-provision the draft KV binding."""
+    ensure_private_env()
+    result = run(["npx", "wrangler", "deploy", "--env", ENV_NAME])
+    return result.stdout
 
 
 def prompt_credentials():
@@ -206,9 +177,8 @@ def main():
     print("No brokerage write permissions will be created.")
     ensure_branch()
     ensure_wrangler_auth()
-    kv_id, created = ensure_kv_binding()
-    print(f"KV binding ready: {KV_BINDING} ({'created' if created else 'existing'})")
-    print(f"KV id: {kv_id}  [Cloudflare documents namespace IDs as non-secret identifiers]")
+    provision_output = provision_private_worker()
+    print(f"KV binding ready: {KV_BINDING} (Wrangler auto-provisioned/reused)")
     values = prompt_credentials()
     upload_token = put_secrets(values)
     print("Private authentication secrets uploaded.")
