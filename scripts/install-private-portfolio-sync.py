@@ -51,28 +51,7 @@ def require_ready():
         raise SystemExit("Private Portfolio sync program is missing.")
 
 
-def env_from_file():
-    allowed = {
-        "RUNLU_PRIVATE_PORTFOLIO_URL",
-        "RUNLU_PRIVATE_PORTFOLIO_ALLOWED_HOST",
-        "PRIVATE_SNAPSHOT_UPLOAD_TOKEN",
-    }
-    out = {}
-    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
-        value = line.strip()
-        if not value or value.startswith("#") or "=" not in value:
-            continue
-        key, raw = value.split("=", 1)
-        key = key.strip()
-        if key in allowed:
-            out[key] = raw.strip()
-    if set(out) != allowed:
-        raise SystemExit("Private uploader env file is incomplete.")
-    return out
-
-
 def build_plist():
-    env = env_from_file()
     return {
         "Label": LABEL,
         "ProgramArguments": [
@@ -81,7 +60,6 @@ def build_plist():
         ],
         "WorkingDirectory": str(ROOT),
         "EnvironmentVariables": {
-            **env,
             "RUNLU_PRIVATE_PORTFOLIO_POLL_SECONDS": "180",
             "PYTHONUNBUFFERED": "1",
         },
