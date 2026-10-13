@@ -13,7 +13,8 @@ from private_portfolio_upload import upload_snapshot as upload_private_portfolio
 
 
 def publish_to_csu_bot(dashboard_payload):
-    """Return CSU Bot V2's account-aware paper decision for a dashboard payload."""
+    """Cache the sanitized read-only snapshot, then ask CSU Bot V2 for its paper decision."""
+    cache_sanitized_snapshot(dashboard_payload)
     return forward_snapshot(dashboard_payload)
 
 
