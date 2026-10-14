@@ -31,11 +31,14 @@ try{
  assert.match(await page.locator('#watchlistItems').innerText(),/MSFT/);
  assert.match(await page.locator('#watchlistItems').innerText(),/350.50/);
  assert.match(await page.locator('#watchlistItems').innerText(),/Watch valuation before deciding/);
+ page.on('dialog',async dialog=>{if(dialog.type()==='prompt'){const message=dialog.message();await dialog.accept(message.includes('reason')?'Revised investment thesis':message.includes('price')?'325.25':'REVIEW')}else await dialog.accept()});
+ await page.locator('[data-editwatch="MSFT"]').click();
+ assert.match(await page.locator('#watchlistItems').innerText(),/Revised investment thesis/);
+ assert.match(await page.locator('#watchlistItems').innerText(),/325.25/);
  assert.equal(await page.locator('#holdingCount').innerText(),'0');
- page.once('dialog',dialog=>dialog.accept());
  await page.locator('[data-promote="MSFT"]').click();
  assert.equal(await page.locator('#holdingCount').innerText(),'1');
- await page.locator('#holdingResearch').getByText('Research note: Watch valuation before deciding', {exact:false}).waitFor();
+ await page.locator('#holdingResearch').getByText('Research note: Revised investment thesis', {exact:false}).waitFor();
  assert.match(await page.locator('#watchlistItems').innerText(),/MSFT/);
  assert.equal(await page.locator('#memoryCount').innerText(),'0');
  await page.locator('#newSymbol').fill('AAPL');
