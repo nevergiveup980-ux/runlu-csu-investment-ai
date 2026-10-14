@@ -38,6 +38,7 @@ try{
  await page.locator('#saveWatchEdit').click();
  assert.match(await page.locator('#watchlistItems').innerText(),/Revised investment thesis/);
  assert.match(await page.locator('#watchlistItems').innerText(),/325.25/);
+ assert.equal(await page.locator('#selectedSymbol').innerText(),'—');
  assert.equal(await page.locator('#holdingCount').innerText(),'0');
  page.once('dialog',dialog=>dialog.accept());
  await page.locator('[data-promote="MSFT"]').click();
