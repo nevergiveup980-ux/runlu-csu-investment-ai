@@ -35,7 +35,7 @@ try{
  page.once('dialog',dialog=>dialog.accept());
  await page.locator('[data-promote="MSFT"]').click();
  assert.equal(await page.locator('#holdingCount').innerText(),'1');
- assert.match(await page.locator('#holdingResearch').innerText(),/Watch valuation before deciding/);
+ await page.locator('#holdingResearch').getByText('Research note: Watch valuation before deciding', {exact:false}).waitFor();
  assert.match(await page.locator('#watchlistItems').innerText(),/MSFT/);
  assert.equal(await page.locator('#memoryCount').innerText(),'0');
  await page.locator('#newSymbol').fill('AAPL');
