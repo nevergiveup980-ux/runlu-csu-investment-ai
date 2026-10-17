@@ -1,0 +1,17 @@
+name: RUNLU INVEST isolated Pages preview (retired)
+# Disabled: this repository's GitHub Pages deployment belongs to the CSU robot.
+# The original workflow competed for the same Pages site and could overwrite CSU.
+# RUNLU INVEST must deploy from a separate, sanitized repository or host.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  notice:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain retired deployment
+        run: |
+          echo "RUNLU INVEST preview deployment is disabled in this shared repository."
+          echo "Deploy a sanitized standalone build from a separate repository instead."
+          exit 1

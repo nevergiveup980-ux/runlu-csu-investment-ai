@@ -1,0 +1,12 @@
+{
+  "product": "RUNLU INVEST",
+  "version": "0.1.0",
+  "mode": "READ_ONLY",
+  "tagline": "The investment companion that remembers.",
+  "features": {
+    "multiHolding": true,
+    "investmentMemory": true,
+    "brokerageTrading": false,
+    "orderPlacement": false
+  }
+}
