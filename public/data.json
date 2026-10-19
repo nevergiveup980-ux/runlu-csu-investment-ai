@@ -2,7 +2,7 @@
   "symbol": "CSU.TO",
   "version": "1.8",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-10-17T00:32:15.892Z",
+  "updatedAt": "2026-10-19T04:49:22.012Z",
   "asOf": "2026-10-16",
   "dataStatus": {
     "quoteMode": "Intraday delayed/indicative",
@@ -23,7 +23,7 @@
     "macd": 60.90704103146527,
     "macdSignal": 21.065729416886015,
     "support20": 2731.60009765625,
-    "resistance20": 3347.534912109375
+    "resistance20": 3347.5400390625
   },
   "accountContext": {
     "holdingShares": 0,
@@ -5136,10 +5136,10 @@
       "timestamp": 1792157400,
       "time": "2026-10-16T13:30:00.000Z",
       "open": 3300,
-      "high": 3347.534912109375,
+      "high": 3347.5400390625,
       "low": 3121.10009765625,
       "close": 3185.800048828125,
-      "volume": 63426,
+      "volume": 68100,
       "date": "2026-10-16"
     }
   ],
@@ -20766,7 +20766,7 @@
       "high": 3347.534912109375,
       "low": 3285.68994140625,
       "close": 3285.68994140625,
-      "volume": 7097
+      "volume": 9746
     },
     {
       "timestamp": 1792161000,
@@ -20811,7 +20811,7 @@
       "high": 3171.090087890625,
       "low": 3144.679931640625,
       "close": 3163.179931640625,
-      "volume": 45407
+      "volume": 6505
     },
     {
       "timestamp": 1792179000,
@@ -29750,7 +29750,7 @@
       "high": 3347.534912109375,
       "low": 3230,
       "close": 3232.5400390625,
-      "volume": 11813
+      "volume": 14462
     },
     {
       "timestamp": 1792164600,
@@ -29768,7 +29768,7 @@
       "high": 3171.090087890625,
       "low": 3121.10009765625,
       "close": 3163.179931640625,
-      "volume": 52627
+      "volume": 13725
     },
     {
       "timestamp": 1792179000,
