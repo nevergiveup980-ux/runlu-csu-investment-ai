@@ -8,6 +8,7 @@ TRADE_RISK_LIMIT = D("20")
 DAILY_LOSS_LIMIT = D("40")
 DRAWDOWN_LIMIT = D("200")
 MAX_EXPOSURE = D("1800")
+MIN_CASH_RESERVE = D("200")
 
 @dataclass(frozen=True)
 class Portfolio:
@@ -40,6 +41,8 @@ def check_order(portfolio: Portfolio, order: Proposal, *, mode: str = "PAPER"):
     notional = order.quantity * order.entry
     if notional > portfolio.settled_cash:
         reasons.append("INSUFFICIENT_SETTLED_CASH")
+    if portfolio.settled_cash - notional < MIN_CASH_RESERVE:
+        reasons.append("CASH_RESERVE")
     if portfolio.exposure + notional > MAX_EXPOSURE:
         reasons.append("EXPOSURE_LIMIT")
     if portfolio.daily_start_equity - portfolio.equity >= DAILY_LOSS_LIMIT:
