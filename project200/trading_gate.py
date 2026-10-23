@@ -1,7 +1,16 @@
-"""Paper-only order gateway. Requires fresh marks for every open position."""
+"""Paper-only order gateway. Requires fresh, finite marks for every open position."""
 from decimal import Decimal as D, InvalidOperation
 from risk_engine import Portfolio, Proposal, check_order
 from paper_broker import PaperBroker, Quote
+
+def valid_quote(quote):
+    if not isinstance(quote, Quote) or not isinstance(quote.symbol, str) or not quote.symbol.strip():
+        return False
+    try:
+        bid, ask = D(str(quote.bid)), D(str(quote.ask))
+        return bid.is_finite() and ask.is_finite() and bid > 0 and ask >= bid
+    except (InvalidOperation, TypeError, ValueError):
+        return False
 
 class TradingGate:
     def __init__(self, broker=None):
@@ -14,10 +23,10 @@ class TradingGate:
             return ["INVALID_QUANTITY"]
         if order_id in self.broker.ids:
             return ["DUPLICATE_ORDER"]
+        if not valid_quote(quote):
+            return ["INVALID_QUOTE"]
         if not self.broker._quote_ok(quote, now):
             return ["STALE_QUOTE"]
-        if quote.bid <= 0 or quote.ask < quote.bid:
-            return ["INVALID_QUOTE"]
         try:
             fee = D(str(fee))
             stop = D(str(stop))
@@ -34,7 +43,7 @@ class TradingGate:
             mark = marks.get(symbol)
             if not isinstance(mark, Quote) or mark.symbol != symbol:
                 return ["MISSING_PORTFOLIO_MARKS"]
-            if not self.broker._quote_ok(mark, now) or mark.bid <= 0 or mark.ask < mark.bid:
+            if not valid_quote(mark) or not self.broker._quote_ok(mark, now):
                 return ["INVALID_PORTFOLIO_MARKS"]
             bid_marks[symbol] = mark.bid
         equity = self.broker.equity(bid_marks)
