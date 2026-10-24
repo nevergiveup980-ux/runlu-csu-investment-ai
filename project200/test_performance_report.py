@@ -23,4 +23,14 @@ class ReportTests(unittest.TestCase):
             summarize({"trades":[trade("2026-01-03",1),trade("2026-01-01",2)]})
     def test_no_losses_profit_factor_undefined(self):
         self.assertIsNone(summarize({"trades":[trade("2026-01-01",10)]})["profit_factor"])
+    def test_reject_nonfinite_starting_cash(self):
+        for value in (D("NaN"),D("Infinity"),D("-1")):
+            with self.subTest(value=value),self.assertRaisesRegex(ValueError,"INVALID_STARTING_CASH"):
+                summarize({"trades":[]},starting_cash=value)
+    def test_reject_invalid_calendar_date(self):
+        with self.assertRaisesRegex(ValueError,"INVALID_TRADE"):
+            summarize({"trades":[trade("2026-02-30",5)]})
+    def test_reject_malformed_result(self):
+        with self.assertRaisesRegex(ValueError,"MISSING_TRADES"):
+            summarize(None)
 if __name__=="__main__":unittest.main()
