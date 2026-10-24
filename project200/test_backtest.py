@@ -2,6 +2,7 @@ import tempfile, unittest
 from decimal import Decimal as D
 from pathlib import Path
 from backtest import load_bars, backtest
+
 class BacktestTests(unittest.TestCase):
     def bars(self):
         return [{'date':str(i),'open':D('10'),'close':D(10+i),'high':D(20+i),'low':D('9'),'volume':D('100')} for i in range(9)]
@@ -21,4 +22,15 @@ class BacktestTests(unittest.TestCase):
             p=Path(d)/'bad.csv'
             p.write_text('date,open,high,low,close,volume\n2026-01-01,10,9,8,10,100\n')
             with self.assertRaises(ValueError):load_bars(p)
+    def test_nonfinite_assumptions_rejected(self):
+        for kwargs in ({'fee':D('NaN')},{'spread_bps':D('Infinity')},
+                       {'starting_cash':D('NaN')},{'fee':D('-1')}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                backtest(self.bars(),**kwargs)
+    def test_excessive_spread_rejected(self):
+        with self.assertRaises(ValueError):
+            backtest(self.bars(),spread_bps=D('20000'))
+    def test_invalid_lookback_rejected(self):
+        with self.assertRaises(ValueError):
+            backtest(self.bars(),lookback=True)
 if __name__=='__main__':unittest.main()
