@@ -1,9 +1,16 @@
 """Performance accounting for completed, chronological paper backtest trades."""
+from datetime import date
 from decimal import Decimal as D, InvalidOperation
 
 def summarize(result, *, starting_cash=D("2000")):
-    if starting_cash <= 0:
+    try:
+        starting_cash=D(str(starting_cash))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError("INVALID_STARTING_CASH") from exc
+    if not starting_cash.is_finite() or starting_cash <= 0:
         raise ValueError("INVALID_STARTING_CASH")
+    if not isinstance(result,dict):
+        raise ValueError("MISSING_TRADES")
     trades=result.get("trades")
     if not isinstance(trades,list):
         raise ValueError("MISSING_TRADES")
@@ -16,11 +23,11 @@ def summarize(result, *, starting_cash=D("2000")):
     for trade in trades:
         try:
             pnl=D(str(trade["net_pnl"]))
-            entry=trade["entry_date"]
-            exit_date=trade["exit_date"]
-        except (KeyError, InvalidOperation, ValueError, TypeError) as exc:
+            entry=date.fromisoformat(trade["entry_date"])
+            exit_date=date.fromisoformat(trade["exit_date"])
+        except (KeyError, InvalidOperation, ValueError, TypeError, AttributeError) as exc:
             raise ValueError("INVALID_TRADE") from exc
-        if not pnl.is_finite() or not isinstance(entry,str) or not isinstance(exit_date,str) or entry>exit_date:
+        if not pnl.is_finite() or entry>exit_date:
             raise ValueError("INVALID_TRADE")
         if last_exit is not None and entry<last_exit:
             raise ValueError("OUT_OF_ORDER_TRADES")
