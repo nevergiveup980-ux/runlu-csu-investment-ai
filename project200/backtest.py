@@ -1,6 +1,6 @@
 """Research-only daily bar backtest: close signal, next open entry, following open exit."""
 import csv
-from decimal import Decimal as D
+from decimal import Decimal as D, InvalidOperation
 
 def load_bars(path):
     with open(path, newline='', encoding='utf-8') as f:
@@ -21,9 +21,16 @@ def load_bars(path):
     return bars
 
 def backtest(bars, *, starting_cash=D('2000'), fee=D('1'), spread_bps=D('5'), lookback=5):
-    if lookback < 2 or starting_cash <= 0 or fee < 0 or spread_bps < 0:
+    try:
+        starting_cash, fee, spread_bps = (D(str(x)) for x in (starting_cash, fee, spread_bps))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError('invalid parameters') from exc
+    if (type(lookback) is not int or lookback < 2
+            or not all(x.is_finite() for x in (starting_cash, fee, spread_bps))
+            or starting_cash <= D('200') or fee < 0 or spread_bps < 0
+            or spread_bps >= D('20000')):
         raise ValueError('invalid parameters')
-    cash=D(starting_cash)
+    cash=starting_cash
     trades=[]
     next_free_entry=0
     for t in range(lookback-1,len(bars)-2):
