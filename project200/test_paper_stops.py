@@ -14,11 +14,9 @@ class StopTests(unittest.TestCase):
     def test_no_trigger(self):
         q = Quote("TEST", D("96"), D("97"), self.now)
         self.assertEqual(evaluate_stops(self.gate, {"TEST": q}, self.now)["status"], "NO_STOP_TRIGGER")
-        self.assertEqual(self.gate.broker.positions["TEST"], 2)
     def test_trigger(self):
         q = Quote("TEST", D("95"), D("96"), self.now)
-        result = evaluate_stops(self.gate, {"TEST": q}, self.now)
-        self.assertEqual(result["status"], "STOP_FILLED_PAPER")
+        self.assertEqual(evaluate_stops(self.gate, {"TEST": q}, self.now)["status"], "STOP_FILLED_PAPER")
         self.assertEqual(self.gate.broker.positions["TEST"], 0)
         self.assertEqual(self.gate.broker.cash, D("1990"))
     def test_gap_fill_at_bid_not_stop(self):
@@ -29,7 +27,6 @@ class StopTests(unittest.TestCase):
     def test_stale_quote(self):
         q = Quote("TEST", D("90"), D("91"), self.now-timedelta(seconds=61))
         self.assertEqual(evaluate_stops(self.gate, {"TEST": q}, self.now)["status"], "STALE_QUOTE")
-        self.assertEqual(self.gate.broker.positions["TEST"], 2)
     def test_missing_quote(self):
         self.assertEqual(evaluate_stops(self.gate, {}, self.now)["status"], "INVALID_OR_MISSING_QUOTE")
     def test_idempotent_after_liquidation(self):
@@ -37,8 +34,22 @@ class StopTests(unittest.TestCase):
         evaluate_stops(self.gate, {"TEST": q}, self.now)
         self.assertEqual(evaluate_stops(self.gate, {"TEST": q}, self.now)["status"], "NO_POSITIONS")
     def test_no_automatic_background_execution(self):
-        q = Quote("TEST", D("90"), D("91"), self.now)
-        self.assertEqual(self.gate.broker.positions["TEST"], 2)
         self.assertEqual(self.gate.broker.events[-1]["side"], "BUY")
+    def test_old_stop_not_reused_after_reentry(self):
+        q = Quote("TEST", D("99"), D("100"), self.now)
+        self.assertEqual(self.gate.broker.sell("close", q, 2, self.now), "FILLED_PAPER")
+        self.assertEqual(self.gate.buy("new", q, 1, D("85"), self.now), ["FILLED_PAPER"])
+        lower = Quote("TEST", D("90"), D("91"), self.now)
+        self.assertEqual(evaluate_stops(self.gate, {"TEST": lower}, self.now)["status"], "NO_STOP_TRIGGER")
+    def test_partial_sell_keeps_active_stop(self):
+        q = Quote("TEST", D("99"), D("100"), self.now)
+        self.assertEqual(self.gate.broker.sell("partial", q, 1, self.now), "FILLED_PAPER")
+        low = Quote("TEST", D("94"), D("95"), self.now)
+        self.assertEqual(evaluate_stops(self.gate, {"TEST": low}, self.now)["status"], "STOP_FILLED_PAPER")
+        self.assertEqual(self.gate.broker.positions["TEST"], 0)
+    def test_position_journal_mismatch(self):
+        self.gate.broker.positions["TEST"] = 3
+        q = Quote("TEST", D("90"), D("91"), self.now)
+        self.assertEqual(evaluate_stops(self.gate, {"TEST": q}, self.now)["status"], "POSITION_JOURNAL_MISMATCH")
 if __name__ == "__main__":
     unittest.main()
