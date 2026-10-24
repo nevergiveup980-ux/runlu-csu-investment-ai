@@ -1,0 +1,27 @@
+name: Project 200 paper risk tests
+on:
+  push:
+    branches: [project200-paper-risk-v1]
+    paths:
+      - 'project200/**'
+      - '.github/workflows/project200-paper-tests.yml'
+  pull_request:
+    paths:
+      - 'project200/**'
+      - '.github/workflows/project200-paper-tests.yml'
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and run all paper-only tests
+        working-directory: project200
+        run: |
+          python -m compileall -q .
+          python -m unittest discover -v -p 'test_*.py'
