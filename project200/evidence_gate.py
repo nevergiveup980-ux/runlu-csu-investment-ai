@@ -9,6 +9,8 @@ def _finite(value):
         return None
 
 def assess(report, sensitivity_report, *, min_test_trades=20):
+    if type(min_test_trades) is not int or min_test_trades<1:
+        raise ValueError("INVALID_MIN_TEST_TRADES")
     failures=[]
     if not isinstance(report,dict) or report.get("mode")!="RESEARCH_ONLY" or not isinstance(report.get("audit"),dict) or report["audit"].get("audited") is not True:
         failures.append("UNVERIFIED_RESEARCH_REPORT")
@@ -27,10 +29,12 @@ def assess(report, sensitivity_report, *, min_test_trades=20):
         scenarios=sensitivity_report.get("scenarios")
         count=sensitivity_report.get("scenario_count")
         if (not isinstance(scenarios,list) or not scenarios or type(count) is not int
-                or count!=len(scenarios) or sensitivity_report.get("split_date")!=report.get("split_date")):
+                or count!=len(scenarios) or not isinstance(report,dict)
+                or sensitivity_report.get("split_date")!=report.get("split_date")):
             failures.append("INVALID_SENSITIVITY")
         else:
             seen=set()
+            positive=0
             for s in scenarios:
                 if not isinstance(s,dict):
                     failures.append("INVALID_SENSITIVITY")
@@ -48,9 +52,15 @@ def assess(report, sensitivity_report, *, min_test_trades=20):
                     failures.append("DUPLICATE_COST_SCENARIO")
                     break
                 seen.add(key)
+                positive+=int(value>0)
                 if value<=0:
                     failures.append("COST_SCENARIO_NOT_PROFITABLE")
-            if sensitivity_report.get("all_scenarios_positive") is not True:
+            reported_positive=sensitivity_report.get("positive_test_scenarios")
+            if type(reported_positive) is not int or reported_positive!=positive:
+                failures.append("INCONSISTENT_SENSITIVITY_SUMMARY")
+            if sensitivity_report.get("all_scenarios_positive") is not (positive==count):
+                failures.append("INCONSISTENT_SENSITIVITY_SUMMARY")
+            if positive!=count:
                 failures.append("COST_SCENARIO_NOT_PROFITABLE")
     return {"mode":"RESEARCH_ONLY","screen_passed":not failures,
             "failures":list(dict.fromkeys(failures)),
