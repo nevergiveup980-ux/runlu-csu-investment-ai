@@ -2,26 +2,26 @@
   "symbol": "CSU.TO",
   "version": "1.8",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-10-26T19:58:11.450Z",
+  "updatedAt": "2026-10-26T23:55:36.074Z",
   "asOf": "2026-10-26",
   "dataStatus": {
     "quoteMode": "Intraday delayed/indicative",
     "quoteSource": "Yahoo public 5-minute chart feed",
-    "priceAsOf": "2026-10-26T19:58:01.000Z",
+    "priceAsOf": "2026-10-26T20:00:00.000Z",
     "refreshCadence": "Every 2 hours on weekdays",
     "staleAfterMinutes": 190,
     "hourlyChartAvailable": true
   },
   "indicators": {
-    "price": 3374,
-    "dailyClose": 3374,
-    "sma20": 3093.464501953125,
-    "sma50": 3012.9933935546874,
-    "sma100": 2951.4039013671877,
-    "sma200": 2768.2380505371093,
-    "rsi14": 68.76742221139668,
-    "macd": 114.28071788764737,
-    "macdSignal": 76.48291460018669,
+    "price": 3361.4599609375,
+    "dailyClose": 3361.4599609375,
+    "sma20": 3092.8375,
+    "sma50": 3012.7425927734375,
+    "sma100": 2951.2785009765626,
+    "sma200": 2768.1753503417967,
+    "rsi14": 67.66549412907648,
+    "macd": 113.28037289120812,
+    "macdSignal": 76.28284560089884,
     "support20": 2800.1298828125,
     "resistance20": 3418.550048828125
   },
@@ -35,8 +35,8 @@
       "source": "Webull screenshot confirmed by user"
     },
     "preferredReentryMax": 2900,
-    "pctFromLastSell": 5.815791454449659,
-    "pctToPreferredReentry": 16.3448275862069,
+    "pctFromLastSell": 5.422509249865137,
+    "pctToPreferredReentry": 15.912412446120694,
     "strategy": "Re-enter on a meaningful pullback; do not chase a technical BUY when the entry is only balanced.",
     "updatedAt": "2026-08-18T13:14:00-06:00"
   },
@@ -54,13 +54,13 @@
       "Price is more than ~8% above SMA20",
       "Account context: currently not holding CSU",
       "Last confirmed sell: $3188.56",
-      "Current price is 5.82% versus the last confirmed sell",
+      "Current price is 5.42% versus the last confirmed sell",
       "Technical conditions do not justify re-entry yet",
       "Latest price lane: Intraday delayed/indicative",
       "Technical buy signal: DO NOT BUY",
       "Account-aware buy decision: WAIT",
       "Sell decision: HOLD",
-      "RSI14 is 68.8",
+      "RSI14 is 67.7",
       "MACD is above signal"
     ],
     "disclaimer": "Research recommendation based on delayed/indicative public technical data plus manually confirmed account context. It is not a guarantee of return and does not execute trades."
@@ -5118,8 +5118,8 @@
       "open": 3370.010009765625,
       "high": 3410.510009765625,
       "low": 3299.3798828125,
-      "close": 3374,
-      "volume": 41497,
+      "close": 3361.4599609375,
+      "volume": 50821,
       "date": "2026-10-26"
     }
   ],
@@ -20799,16 +20799,16 @@
       "open": 3364.199951171875,
       "high": 3385.2099609375,
       "low": 3359.530029296875,
-      "close": 3374.199951171875,
-      "volume": 7187
+      "close": 3379,
+      "volume": 10111
     },
     {
-      "timestamp": 1793044681,
-      "time": "2026-10-26T19:58:01.000Z",
-      "open": 3374,
-      "high": 3374,
-      "low": 3374,
-      "close": 3374,
+      "timestamp": 1793044800,
+      "time": "2026-10-26T20:00:00.000Z",
+      "open": 3361.4599609375,
+      "high": 3361.4599609375,
+      "low": 3361.4599609375,
+      "close": 3361.4599609375,
       "volume": 0
     }
   ],
@@ -29756,8 +29756,8 @@
       "open": 3364.199951171875,
       "high": 3385.2099609375,
       "low": 3359.530029296875,
-      "close": 3374,
-      "volume": 7187
+      "close": 3361.4599609375,
+      "volume": 10111
     }
   ]
 }
