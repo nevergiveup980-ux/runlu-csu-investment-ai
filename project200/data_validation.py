@@ -39,8 +39,8 @@ def walk_forward(bars, *, train_fraction=D("0.7"), fee=D("1"), spread_bps=D("5")
     if cut<8 or len(bars)-cut<8:
         raise ValueError("INSUFFICIENT_SPLIT")
     train=backtest(bars[:cut],fee=fee,spread_bps=spread_bps)
-    # Supply only prior lookback context. Test trades are filtered by entry date.
-    context=4
+    # Include the full five-close signal window ending on the last training day.\n    # Its next-open entry may occur on the first held-out day.\n    # Test trades are filtered by entry date.
+    context=5
     test_bars=bars[cut-context:]
     test=backtest(test_bars,fee=fee,spread_bps=spread_bps)
     test_trades=[t for t in test["trades"] if t["entry_date"]>=bars[cut]["date"]]
