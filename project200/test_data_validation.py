@@ -30,6 +30,22 @@ class DataTests(unittest.TestCase):
     def test_split_guard(self):
         with self.assertRaisesRegex(ValueError,"INVALID_SPLIT"):
             walk_forward([],train_fraction=D("0.99"))
+    def test_first_held_out_entry_uses_last_training_signal(self):
+        bars=[]
+        for i in range(100):
+            close=D("10")
+            if i==69:
+                close=D("12")
+            bars.append({"date":(date(2026,1,1)+timedelta(days=i)).isoformat(),
+                         "open":D("10"),"high":D("13"),"low":D("9"),
+                         "close":close,"volume":D("100")})
+        result=walk_forward(bars,fee=D("0"),spread_bps=D("0"))
+        first_test_date=bars[70]["date"]
+        self.assertEqual(result["split_date"],first_test_date)
+        self.assertTrue(any(t["signal_date"]==bars[69]["date"]
+                            and t["entry_date"]==first_test_date
+                            for t in result["test"]["trades"]))
+
     def test_nonfinite_split(self):
         for value in ("NaN","Infinity","bad"):
             with self.subTest(value=value),self.assertRaisesRegex(ValueError,"INVALID_SPLIT"):
