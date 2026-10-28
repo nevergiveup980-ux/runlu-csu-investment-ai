@@ -44,6 +44,18 @@ def summarize(result, *, starting_cash=D("2000")):
         peak=max(peak,equity)
         max_drawdown=max(max_drawdown,peak-equity)
     n=len(trades)
+    # When the caller supplies aggregate accounting, reconcile it with
+    # independently recomputed trade-level results instead of trusting it.
+    if "trade_count" in result and (type(result["trade_count"]) is not int or result["trade_count"]!=n):
+        raise ValueError("INCONSISTENT_TRADE_COUNT")
+    for key,computed in (("net_pnl",equity-starting_cash),("ending_equity",equity)):
+        if key in result:
+            try:
+                declared=D(str(result[key]))
+            except (InvalidOperation,TypeError,ValueError) as exc:
+                raise ValueError("INCONSISTENT_"+key.upper()) from exc
+            if not declared.is_finite() or declared!=computed:
+                raise ValueError("INCONSISTENT_"+key.upper())
     return {
         "trades":n,
         "wins":wins,
