@@ -22,6 +22,8 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(first["mode"],"RESEARCH_ONLY")
         self.assertEqual(first["input_sha256"],first["research"]["data"]["sha256"])
         self.assertEqual(first["cost_sensitivity"]["scenario_count"],9)
+        self.assertEqual(first["buy_and_hold_baseline"]["baseline"],"BUY_AND_HOLD_HELD_OUT")
+        self.assertEqual(first["test_excess_pnl_vs_baseline_usd"],"2")
         self.assertFalse(first["evidence_screen"]["screen_passed"])
         self.assertFalse(first["evidence_screen"]["live_trading_approved"])
     def test_source_label_required(self):
