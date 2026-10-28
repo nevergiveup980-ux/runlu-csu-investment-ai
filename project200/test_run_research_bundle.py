@@ -20,6 +20,7 @@ class BundleTests(unittest.TestCase):
         second=bundle(self.csv,source_label="SYNTHETIC TEST DATA")
         self.assertEqual(first,second)
         self.assertEqual(first["mode"],"RESEARCH_ONLY")
+        self.assertIs(first["provenance_verified"],False)
         self.assertEqual(first["input_sha256"],first["research"]["data"]["sha256"])
         self.assertEqual(first["cost_sensitivity"]["scenario_count"],9)
         self.assertEqual(first["buy_and_hold_baseline"]["baseline"],"BUY_AND_HOLD_HELD_OUT")
