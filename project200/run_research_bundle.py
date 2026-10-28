@@ -6,6 +6,7 @@ from pathlib import Path
 from run_research import research
 from cost_sensitivity import sensitivity
 from evidence_gate import assess
+from hold_baseline import baseline
 
 def bundle(csv_path, *, source_label, min_bars=120):
     if not isinstance(source_label,str) or not source_label.strip():
@@ -17,6 +18,7 @@ def bundle(csv_path, *, source_label, min_bars=120):
     after=hashlib.sha256(path.read_bytes()).hexdigest()
     if before!=after or before!=report["data"]["sha256"]:
         raise ValueError("INPUT_CHANGED_DURING_RESEARCH")
+    benchmark=baseline(path,min_bars=min_bars)
     verdict=assess(report,stress)
     return {
         "mode":"RESEARCH_ONLY",
@@ -24,6 +26,8 @@ def bundle(csv_path, *, source_label, min_bars=120):
         "input_sha256":before,
         "research":report,
         "cost_sensitivity":stress,
+        "buy_and_hold_baseline":benchmark,
+        "test_excess_pnl_vs_baseline_usd":str(__import__("decimal").Decimal(report["test"]["net_pnl"])-__import__("decimal").Decimal(benchmark["net_pnl"])),
         "evidence_screen":verdict,
         "limitations":[
             "Source label is user supplied and is not proof of data provenance or license",
