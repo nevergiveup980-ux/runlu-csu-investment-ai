@@ -33,4 +33,17 @@ class ReportTests(unittest.TestCase):
     def test_reject_malformed_result(self):
         with self.assertRaisesRegex(ValueError,"MISSING_TRADES"):
             summarize(None)
+    def test_reconcile_matching_ledger(self):
+        r=summarize({"trades":[trade("2026-01-01",20)],"trade_count":1,
+                     "net_pnl":"20.00","ending_equity":"2020"})
+        self.assertEqual(r["net_pnl"],"20")
+    def test_reject_incorrect_count(self):
+        with self.assertRaisesRegex(ValueError,"INCONSISTENT_TRADE_COUNT"):
+            summarize({"trades":[trade("2026-01-01",20)],"trade_count":2})
+    def test_reject_incorrect_total(self):
+        with self.assertRaisesRegex(ValueError,"INCONSISTENT_NET_PNL"):
+            summarize({"trades":[trade("2026-01-01",20)],"net_pnl":"200"})
+    def test_reject_incorrect_ending_equity(self):
+        with self.assertRaisesRegex(ValueError,"INCONSISTENT_ENDING_EQUITY"):
+            summarize({"trades":[trade("2026-01-01",20)],"ending_equity":"2200"})
 if __name__=="__main__":unittest.main()
