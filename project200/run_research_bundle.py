@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from decimal import Decimal as D
 from run_research import research
 from cost_sensitivity import sensitivity
 from evidence_gate import assess
@@ -19,15 +20,19 @@ def bundle(csv_path, *, source_label, min_bars=120):
     if before!=after or before!=report["data"]["sha256"]:
         raise ValueError("INPUT_CHANGED_DURING_RESEARCH")
     benchmark=baseline(path,min_bars=min_bars)
+    final_sha=hashlib.sha256(path.read_bytes()).hexdigest()
+    if final_sha!=before:
+        raise ValueError("INPUT_CHANGED_DURING_RESEARCH")
     verdict=assess(report,stress)
     return {
         "mode":"RESEARCH_ONLY",
         "source_label_user_supplied_unverified":source_label.strip(),
         "input_sha256":before,
+        "provenance_verified":False,
         "research":report,
         "cost_sensitivity":stress,
         "buy_and_hold_baseline":benchmark,
-        "test_excess_pnl_vs_baseline_usd":str(__import__("decimal").Decimal(report["test"]["net_pnl"])-__import__("decimal").Decimal(benchmark["net_pnl"])),
+        "test_excess_pnl_vs_baseline_usd":str(D(report["test"]["net_pnl"])-D(benchmark["net_pnl"])),
         "evidence_screen":verdict,
         "limitations":[
             "Source label is user supplied and is not proof of data provenance or license",
