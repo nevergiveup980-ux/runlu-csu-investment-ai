@@ -33,6 +33,12 @@ class OfflineProviderResearchTests(unittest.TestCase):
         self.write(140)
         with self.assertRaisesRegex(ValueError,"OUTPUT_OVERWRITES_INPUT"):
             run(self.src,self.src,symbol="SPY",acquired_on="2026-10-28")
+    def test_existing_report_is_never_overwritten(self):
+        self.write(140)
+        self.dst.write_text("PREVIOUS_REPORT",encoding="utf-8")
+        with self.assertRaisesRegex(FileExistsError,"REPORT_ALREADY_EXISTS"):
+            run(self.src,self.dst,symbol="SPY",acquired_on="2026-10-28")
+        self.assertEqual(self.dst.read_text(encoding="utf-8"),"PREVIOUS_REPORT")
     def test_reject_bad_symbol(self):
         self.write(140)
         with self.assertRaisesRegex(ValueError,"INVALID_SYMBOL"):
