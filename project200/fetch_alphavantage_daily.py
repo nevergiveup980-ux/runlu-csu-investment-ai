@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import urlopen
+from datetime import date
+from decimal import Decimal, InvalidOperation
 
 ENDPOINT="https://www.alphavantage.co/query"
 
@@ -39,8 +41,21 @@ def fetch_daily(symbol, output_path, *, api_key=None, outputsize="full", opener=
         raise ValueError("INVALID_PROVIDER_JSON") from None
     if not isinstance(payload,dict) or any(k in payload for k in ("Error Message","Note","Information")):
         raise ValueError("PROVIDER_ERROR_OR_RATE_LIMIT")
-    if not isinstance(payload.get("Time Series (Daily)"),dict) or not payload["Time Series (Daily)"]:
+    series=payload.get("Time Series (Daily)")
+    if not isinstance(series,dict) or not series:
         raise ValueError("MISSING_DAILY_SERIES")
+    for day,record in series.items():
+        try:
+            if date.fromisoformat(day).isoformat()!=day or not isinstance(record,dict):
+                raise ValueError()
+            values=[Decimal(str(record[key])) for key in
+                    ("1. open","2. high","3. low","4. close","5. volume")]
+            op,hi,lo,cl,vol=values
+            if (not all(v.is_finite() for v in values) or min(op,hi,lo,cl)<=0
+                    or vol<0 or lo>min(op,cl) or hi<max(op,cl) or hi<lo):
+                raise ValueError()
+        except (ValueError,TypeError,KeyError,InvalidOperation) as exc:
+            raise ValueError("INVALID_PROVIDER_BAR") from None
     # Exclusive creation prevents silently replacing previous provider evidence.
     with destination.open("x",encoding="utf-8") as f:
         json.dump(payload,f,ensure_ascii=False,indent=2)
