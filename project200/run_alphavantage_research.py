@@ -2,7 +2,6 @@
 import argparse
 import hashlib
 import json
-import os
 import tempfile
 from pathlib import Path
 from alphavantage_daily_adapter import convert
@@ -39,9 +38,7 @@ def run(input_json, output_json, *, symbol, acquired_on, min_bars=120):
     result["instrument_symbol_user_supplied_unverified"]=symbol.strip()
     result["acquired_on_user_supplied_unverified"]=acquired_on
     # The source JSON and transformed CSV remain local; only aggregate research is written.
-    # Exclusive creation: a concurrent run must never overwrite an existing report.
-    # Write complete JSON to a private temporary file, then reserve the destination
-    # exclusively; remove the reserved file if the final write fails.
+    # Exclusive creation prevents overwriting a report, including concurrent runs.
     encoded=json.dumps(result,indent=2,ensure_ascii=False)+"\n"
     with dst.open("x",encoding="utf-8") as output:
         output.write(encoded)
