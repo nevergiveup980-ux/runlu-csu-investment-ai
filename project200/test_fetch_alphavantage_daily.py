@@ -23,7 +23,7 @@ class FetchDailyTests(unittest.TestCase):
         calls=[]
         def opener(url,timeout):
             calls.append(url)
-            return FakeResponse({"Time Series (Daily)":{"2026-10-28":{"1. open":"10"}}})
+            return FakeResponse({"Time Series (Daily)":{"2026-10-28":{"1. open":"10","2. high":"11","3. low":"9","4. close":"10","5. volume":"100"}}})
         result=fetch_daily("SPY",self.dst,api_key="SECRET123",opener=opener)
         self.assertEqual(result["bars_received"],1)
         self.assertNotIn("SECRET123",str(result))
@@ -33,6 +33,13 @@ class FetchDailyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"PROVIDER_ERROR_OR_RATE_LIMIT"):
             fetch_daily("SPY",self.dst,api_key="SECRET",
                 opener=lambda url,timeout:FakeResponse({"Note":"limit"}))
+        self.assertFalse(self.dst.exists())
+    def test_reject_malformed_price_before_saving(self):
+        invalid={"Time Series (Daily)":{"2026-10-28":{
+            "1. open":"10","2. high":"9","3. low":"8","4. close":"10","5. volume":"100"}}}
+        with self.assertRaisesRegex(ValueError,"INVALID_PROVIDER_BAR"):
+            fetch_daily("SPY",self.dst,api_key="SECRET",
+                opener=lambda url,timeout:FakeResponse(invalid))
         self.assertFalse(self.dst.exists())
     def test_existing_file_is_preserved(self):
         self.dst.write_text("existing")
