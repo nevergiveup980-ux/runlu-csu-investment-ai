@@ -2,27 +2,27 @@
   "symbol": "CSU.TO",
   "version": "1.8",
   "source": "Public daily technical data plus best-effort delayed/indicative intraday chart data",
-  "updatedAt": "2026-10-29T13:11:27.583Z",
-  "asOf": "2026-10-28",
+  "updatedAt": "2026-10-29T19:41:14.083Z",
+  "asOf": "2026-10-29",
   "dataStatus": {
     "quoteMode": "Intraday delayed/indicative",
     "quoteSource": "Yahoo public 5-minute chart feed",
-    "priceAsOf": "2026-10-28T20:00:00.000Z",
+    "priceAsOf": "2026-10-29T19:37:42.000Z",
     "refreshCadence": "Every 2 hours on weekdays",
     "staleAfterMinutes": 190,
     "hourlyChartAvailable": true
   },
   "indicators": {
-    "price": 3345.85009765625,
-    "dailyClose": 3345.85009765625,
-    "sma20": 3137.547509765625,
-    "sma50": 3024.1269970703124,
-    "sma100": 2961.257102050781,
-    "sma200": 2768.16080078125,
-    "rsi14": 64.72827248403355,
-    "macd": 111.92623451987629,
-    "macdSignal": 89.02269768115411,
-    "support20": 2843.2900390625,
+    "price": 3351.925048828125,
+    "dailyClose": 3351.925048828125,
+    "sma20": 3160.407263183594,
+    "sma50": 3031.1972998046876,
+    "sma100": 2965.0831518554687,
+    "sma200": 2768.8678259277344,
+    "rsi14": 65.02530623755888,
+    "macd": 111.58469556093542,
+    "macdSignal": 93.53509725711038,
+    "support20": 2870.389892578125,
     "resistance20": 3418.550048828125
   },
   "accountContext": {
@@ -35,8 +35,8 @@
       "source": "Webull screenshot confirmed by user"
     },
     "preferredReentryMax": 2900,
-    "pctFromLastSell": 4.932950851050322,
-    "pctToPreferredReentry": 15.374141298491374,
+    "pctFromLastSell": 5.123474196130062,
+    "pctToPreferredReentry": 15.583622373383621,
     "strategy": "Re-enter on a meaningful pullback; do not chase a technical BUY when the entry is only balanced.",
     "updatedAt": "2026-08-18T13:14:00-06:00"
   },
@@ -44,23 +44,23 @@
     "trend": "Strong Uptrend",
     "trendScore": 5,
     "trendConfidence": "90%",
-    "entryQuality": "Neutral",
+    "entryQuality": "Extended",
     "technicalBuyDecision": "DO NOT BUY",
     "buyDecision": "WAIT",
     "sellDecision": "HOLD",
     "reasons": [
       "Trend: Strong Uptrend (+5/5)",
-      "Entry quality: Neutral",
-      "Price is not especially close to support or unusually extended",
+      "Entry quality: Extended",
+      "RSI is elevated",
       "Account context: currently not holding CSU",
       "Last confirmed sell: $3188.56",
-      "Current price is 4.93% versus the last confirmed sell",
+      "Current price is 5.12% versus the last confirmed sell",
       "Technical conditions do not justify re-entry yet",
       "Latest price lane: Intraday delayed/indicative",
       "Technical buy signal: DO NOT BUY",
       "Account-aware buy decision: WAIT",
       "Sell decision: HOLD",
-      "RSI14 is 64.7",
+      "RSI14 is 65.0",
       "MACD is above signal"
     ],
     "disclaimer": "Research recommendation based on delayed/indicative public technical data plus manually confirmed account context. It is not a guarantee of return and does not execute trades."
@@ -114,16 +114,6 @@
     "avgReturn20d": 6.004730083089933
   },
   "candles": [
-    {
-      "timestamp": 1730122200,
-      "time": "2024-10-28T13:30:00.000Z",
-      "open": 4312.5,
-      "high": 4350.35009765625,
-      "low": 4300.5498046875,
-      "close": 4304.75,
-      "volume": 25400,
-      "date": "2024-10-28"
-    },
     {
       "timestamp": 1730208600,
       "time": "2024-10-29T13:30:00.000Z",
@@ -5143,63 +5133,19 @@
       "close": 3345.85009765625,
       "volume": 45600,
       "date": "2026-10-28"
+    },
+    {
+      "timestamp": 1793280600,
+      "time": "2026-10-29T13:30:00.000Z",
+      "open": 3315.27001953125,
+      "high": 3388.8349609375,
+      "low": 3296.77001953125,
+      "close": 3351.925048828125,
+      "volume": 31703,
+      "date": "2026-10-29"
     }
   ],
   "hourlyCandles": [
-    {
-      "timestamp": 1761744600,
-      "time": "2025-10-29T13:30:00.000Z",
-      "open": 3731.889892578125,
-      "high": 3735.610107421875,
-      "low": 3624.1201171875,
-      "close": 3638.949951171875,
-      "volume": 0
-    },
-    {
-      "timestamp": 1761748200,
-      "time": "2025-10-29T14:30:00.000Z",
-      "open": 3636.22998046875,
-      "high": 3636.22998046875,
-      "low": 3560.010009765625,
-      "close": 3568.199951171875,
-      "volume": 14640
-    },
-    {
-      "timestamp": 1761751800,
-      "time": "2025-10-29T15:30:00.000Z",
-      "open": 3564.75,
-      "high": 3590.260009765625,
-      "low": 3560,
-      "close": 3563,
-      "volume": 13609
-    },
-    {
-      "timestamp": 1761755400,
-      "time": "2025-10-29T16:30:00.000Z",
-      "open": 3560,
-      "high": 3566.340087890625,
-      "low": 3528.340087890625,
-      "close": 3536.875,
-      "volume": 9395
-    },
-    {
-      "timestamp": 1761759000,
-      "time": "2025-10-29T17:30:00.000Z",
-      "open": 3538.25,
-      "high": 3545.5,
-      "low": 3517.659912109375,
-      "close": 3522.219970703125,
-      "volume": 15227
-    },
-    {
-      "timestamp": 1761762600,
-      "time": "2025-10-29T18:30:00.000Z",
-      "open": 3523.469970703125,
-      "high": 3526.139892578125,
-      "low": 3457.68994140625,
-      "close": 3458.60009765625,
-      "volume": 23121
-    },
     {
       "timestamp": 1761766200,
       "time": "2025-10-29T19:30:00.000Z",
@@ -5207,7 +5153,7 @@
       "high": 3505,
       "low": 3447.77001953125,
       "close": 3447.77001953125,
-      "volume": 26327
+      "volume": 0
     },
     {
       "timestamp": 1761831000,
@@ -20636,43 +20582,79 @@
       "volume": 5392
     },
     {
-      "timestamp": 1793217600,
-      "time": "2026-10-28T20:00:00.000Z",
-      "open": 3345.85009765625,
-      "high": 3345.85009765625,
-      "low": 3345.85009765625,
-      "close": 3345.85009765625,
+      "timestamp": 1793280600,
+      "time": "2026-10-29T13:30:00.000Z",
+      "open": 3315.27001953125,
+      "high": 3380,
+      "low": 3313.659912109375,
+      "close": 3375.199951171875,
+      "volume": 9730
+    },
+    {
+      "timestamp": 1793284200,
+      "time": "2026-10-29T14:30:00.000Z",
+      "open": 3371.39501953125,
+      "high": 3388.8349609375,
+      "low": 3357.070068359375,
+      "close": 3357.070068359375,
+      "volume": 4982
+    },
+    {
+      "timestamp": 1793287800,
+      "time": "2026-10-29T15:30:00.000Z",
+      "open": 3339.409912109375,
+      "high": 3339.409912109375,
+      "low": 3300,
+      "close": 3300,
+      "volume": 4448
+    },
+    {
+      "timestamp": 1793291400,
+      "time": "2026-10-29T16:30:00.000Z",
+      "open": 3300,
+      "high": 3316.679931640625,
+      "low": 3296.77001953125,
+      "close": 3316.679931640625,
+      "volume": 1024
+    },
+    {
+      "timestamp": 1793295000,
+      "time": "2026-10-29T17:30:00.000Z",
+      "open": 3318.669921875,
+      "high": 3342.159912109375,
+      "low": 3318.669921875,
+      "close": 3342.159912109375,
+      "volume": 3382
+    },
+    {
+      "timestamp": 1793298600,
+      "time": "2026-10-29T18:30:00.000Z",
+      "open": 3338.675048828125,
+      "high": 3357.8798828125,
+      "low": 3335.1298828125,
+      "close": 3357.8798828125,
+      "volume": 30735
+    },
+    {
+      "timestamp": 1793302200,
+      "time": "2026-10-29T19:30:00.000Z",
+      "open": 3362.989990234375,
+      "high": 3362.989990234375,
+      "low": 3353.320068359375,
+      "close": 3353.340087890625,
+      "volume": 784
+    },
+    {
+      "timestamp": 1793302662,
+      "time": "2026-10-29T19:37:42.000Z",
+      "open": 3351.925048828125,
+      "high": 3351.925048828125,
+      "low": 3351.925048828125,
+      "close": 3351.925048828125,
       "volume": 0
     }
   ],
   "twoHourCandles": [
-    {
-      "timestamp": 1761744600,
-      "time": "2025-10-29T13:30:00.000Z",
-      "open": 3731.889892578125,
-      "high": 3735.610107421875,
-      "low": 3560.010009765625,
-      "close": 3568.199951171875,
-      "volume": 14640
-    },
-    {
-      "timestamp": 1761751800,
-      "time": "2025-10-29T15:30:00.000Z",
-      "open": 3564.75,
-      "high": 3590.260009765625,
-      "low": 3528.340087890625,
-      "close": 3536.875,
-      "volume": 23004
-    },
-    {
-      "timestamp": 1761759000,
-      "time": "2025-10-29T17:30:00.000Z",
-      "open": 3538.25,
-      "high": 3545.5,
-      "low": 3457.68994140625,
-      "close": 3458.60009765625,
-      "volume": 38348
-    },
     {
       "timestamp": 1761766200,
       "time": "2025-10-29T19:30:00.000Z",
@@ -20680,7 +20662,7 @@
       "high": 3505,
       "low": 3447.77001953125,
       "close": 3447.77001953125,
-      "volume": 26327
+      "volume": 0
     },
     {
       "timestamp": 1761831000,
@@ -29481,8 +29463,44 @@
       "open": 3327.090087890625,
       "high": 3348,
       "low": 3327.090087890625,
-      "close": 3345.85009765625,
+      "close": 3345,
       "volume": 5392
+    },
+    {
+      "timestamp": 1793280600,
+      "time": "2026-10-29T13:30:00.000Z",
+      "open": 3315.27001953125,
+      "high": 3388.8349609375,
+      "low": 3313.659912109375,
+      "close": 3357.070068359375,
+      "volume": 14712
+    },
+    {
+      "timestamp": 1793287800,
+      "time": "2026-10-29T15:30:00.000Z",
+      "open": 3339.409912109375,
+      "high": 3339.409912109375,
+      "low": 3296.77001953125,
+      "close": 3316.679931640625,
+      "volume": 5472
+    },
+    {
+      "timestamp": 1793295000,
+      "time": "2026-10-29T17:30:00.000Z",
+      "open": 3318.669921875,
+      "high": 3357.8798828125,
+      "low": 3318.669921875,
+      "close": 3357.8798828125,
+      "volume": 34117
+    },
+    {
+      "timestamp": 1793302200,
+      "time": "2026-10-29T19:30:00.000Z",
+      "open": 3362.989990234375,
+      "high": 3362.989990234375,
+      "low": 3351.925048828125,
+      "close": 3351.925048828125,
+      "volume": 784
     }
   ]
 }
