@@ -3,3 +3,5 @@ node_modules/
 .env
 .wrangler/
 .DS_Store
+/public/portfolio.json
+/private/

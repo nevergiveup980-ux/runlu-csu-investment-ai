@@ -40,8 +40,8 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;colo
   <div class="grid">
     <div class="card"><div class="label">CSU Price</div><div class="value" id="price">—</div><div class="small" id="quoteAsOf">Waiting</div></div>
     <div class="card"><div class="label">Market Data</div><div class="value" id="dataState">CHECKING</div><div class="small" id="refreshAge">—</div></div>
-    <div class="card"><div class="label">If Not Holding</div><div class="value" id="buyDecision">—</div><div class="small">Public research signal</div></div>
-    <div class="card"><div class="label">If Holding</div><div class="value" id="sellDecision">—</div><div class="small">Public research signal</div></div>
+    <div class="card"><div class="label">Market Entry Signal</div><div class="value" id="buyDecision">—</div><div class="small">Public research signal</div></div>
+    <div class="card"><div class="label">Market Exit Signal</div><div class="value" id="sellDecision">—</div><div class="small">Public research signal</div></div>
   </div>
 
   <div class="section">V2 Experimental Build</div>
@@ -83,7 +83,7 @@ async function market(){
     const d=await r.json(),i=d.indicators||{},a=d.analysis||{},ds=d.dataStatus||{};
     $('price').textContent=i.price==null?'—':'C$'+fmt(i.price);
     $('quoteAsOf').textContent='Quote '+when(ds.priceAsOf||d.asOf);
-    $('buyDecision').textContent=a.buyDecision||'—';$('sellDecision').textContent=a.sellDecision||'—';
+    $('buyDecision').textContent=(['BUY','DO NOT BUY'].includes(a.technicalBuyDecision)?a.technicalBuyDecision:'—');$('sellDecision').textContent=(['SELL','HOLD','HOLD / REVIEW','REVIEW / POSSIBLE SELL'].includes(a.sellDecision)?a.sellDecision:'—');
     const mins=ageMin(d.updatedAt),limit=Number(ds.staleAfterMinutes||190),fresh=mins!=null&&mins<=limit;
     $('dataState').textContent=fresh?'ACTIVE ✓':'STALE ⚠️';
     $('refreshAge').textContent=mins==null?'Refresh time unavailable':Math.round(mins)+' min since robot refresh';

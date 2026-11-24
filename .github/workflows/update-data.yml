@@ -7,6 +7,7 @@ on:
     branches: ["main"]
     paths:
       - 'scripts/update-data.mjs'
+      - 'scripts/check-public-market.mjs'
       - 'public/index.html'
       - '.github/workflows/update-data.yml'
 permissions:
@@ -23,6 +24,7 @@ jobs:
         with:
           node-version: '22'
       - run: node scripts/update-data.mjs
+      - run: node scripts/check-public-market.mjs
       - name: Commit refreshed data
         run: |
           git config user.name "runlu-csu-bot"

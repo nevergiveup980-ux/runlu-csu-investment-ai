@@ -31,12 +31,17 @@ jobs:
           ref: main
       - name: Apply V1.7 chart UI patch
         run: node scripts/patch-ui-v17.mjs
+      - name: Stage market-only files
+        run: |
+          node scripts/check-public-market.mjs
+          mkdir -p pages-artifact
+          cp public/index.html public/monitor.html public/data.json pages-artifact/
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload static dashboard
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ./public
+          path: ./pages-artifact
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
